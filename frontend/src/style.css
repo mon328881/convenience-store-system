@@ -1,0 +1,137 @@
+/* 全局样式 */
+:root {
+  --el-color-primary: #409eff;
+  --el-color-success: #67c23a;
+  --el-color-warning: #e6a23c;
+  --el-color-danger: #f56c6c;
+  --el-color-info: #909399;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 通用工具类 */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.mb-10 {
+  margin-bottom: 10px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+/* 表格样式优化 */
+.el-table {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.el-table th {
+  background-color: #fafafa;
+  color: #606266;
+  font-weight: 500;
+}
+
+/* 卡片样式优化 */
+.el-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* 按钮样式优化 */
+.el-button {
+  border-radius: 4px;
+}
+
+/* 表单样式优化 */
+.el-form-item__label {
+  font-weight: 500;
+}
+
+/* 分页样式优化 */
+.el-pagination {
+  margin-top: 20px;
+  text-align: right;
+}
+
+/* 状态标签样式 */
+.status-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.status-active {
+  background-color: #f0f9ff;
+  color: #1890ff;
+  border: 1px solid #d1ecf1;
+}
+
+.status-inactive {
+  background-color: #fff2f0;
+  color: #ff4d4f;
+  border: 1px solid #ffccc7;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .el-col {
+    margin-bottom: 20px;
+  }
+  
+  .quick-actions {
+    flex-direction: column;
+  }
+  
+  .quick-actions .el-button {
+    width: 100%;
+  }
+}
