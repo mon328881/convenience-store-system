@@ -89,11 +89,50 @@ MongoDB Atlas 是 MongoDB 官方提供的云数据库服务，提供 512MB 免�
    PORT=3000
    ```
 
-#### 6.2 Vercel 部署环境
-在 Vercel 项目设置中添加环境变量：
-- `MONGODB_URI`: 你的 MongoDB Atlas 连接字符串
-- `JWT_SECRET`: 随机生成的安全密钥
-- `NODE_ENV`: `production`
+#### 6.2 Vercel 部署环境配置
+
+**步骤一：登录 Vercel 并找到你的项目**
+1. 访问 https://vercel.com 并登录
+2. 在 Dashboard 中找到你的 `convenience-store-system` 项目
+3. 点击项目名称进入项目详情页
+
+**步骤二：进入项目设置**
+1. 在项目页面顶部，点击 "Settings" 标签
+2. 在左侧菜单中，点击 "Environment Variables"
+
+**步骤三：添加环境变量**
+依次添加以下三个环境变量：
+
+1. **添加 MONGODB_URI**：
+   - Name: `MONGODB_URI`
+   - Value: `mongodb+srv://你的用户名:你的密码@cluster0.xxxxx.mongodb.net/convenience_store?retryWrites=true&w=majority`
+   - Environment: 选择 `Production`, `Preview`, `Development` (全选)
+   - 点击 "Save"
+
+2. **添加 JWT_SECRET**：
+   - Name: `JWT_SECRET`
+   - Value: `your-super-secret-jwt-key-here-make-it-long-and-random`
+   - Environment: 选择 `Production`, `Preview`, `Development` (全选)
+   - 点击 "Save"
+
+3. **添加 NODE_ENV**：
+   - Name: `NODE_ENV`
+   - Value: `production`
+   - Environment: 选择 `Production`, `Preview`, `Development` (全选)
+   - 点击 "Save"
+
+**步骤四：重新部署**
+1. 添加完环境变量后，点击项目页面顶部的 "Deployments" 标签
+2. 找到最新的部署，点击右侧的三个点 "..."
+3. 选择 "Redeploy" 重新部署项目
+
+**⚠️ 重要提示**：
+- 确保 MONGODB_URI 中的用户名、密码、集群地址都是正确的
+- JWT_SECRET 应该是一个长且随机的字符串，建议至少32个字符
+- 保存环境变量后必须重新部署才能生效
+
+**🔍 验证配置**：
+重新部署完成后，访问你的 Vercel 应用，如果能正常显示且没有数据库连接错误，说明配置成功！
 
 ## 🔧 连接字符串示例
 
