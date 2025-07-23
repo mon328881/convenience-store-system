@@ -11,10 +11,15 @@
     "build:frontend": "cd frontend && npm run build",
     "start": "cd backend && npm start",
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
-    "vercel-build": "cd frontend && npm install && npm run build"
+    "vercel-build": "cd frontend && npm install && npm run build",
+    "test:mongodb": "node test-mongodb.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"
+  },
+  "dependencies": {
+    "mongoose": "^7.4.0",
+    "dotenv": "^16.3.1"
   },
   "engines": {
     "node": ">=16.0.0",
