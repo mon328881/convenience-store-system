@@ -73,7 +73,9 @@ temp/
 *.pdf
 
 # HTML files (if not needed for deployment)
-*.html
+# *.html - commented out to allow frontend/index.html
+# Exclude specific HTML files if needed:
+# /some-specific-file.html
 
 # Workspace files
 *.code-workspace
