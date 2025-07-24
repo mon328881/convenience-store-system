@@ -5,7 +5,7 @@ const isProduction = import.meta.env.PROD
 // 根据环境设置 API 基础地址
 export const API_BASE_URL = isDevelopment 
   ? '/api'  // 开发环境使用代理
-  : '/api'  // 生产环境使用相对路径
+  : '/api'  // 生产环境使用相对路径（前后端同域名）
 
 // API 端点配置
 export const API_ENDPOINTS = {
