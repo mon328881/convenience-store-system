@@ -6,6 +6,7 @@ import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
+  root: '.',
   plugins: [
     vue(),
     AutoImport({
@@ -37,6 +38,7 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     rollupOptions: {
+      input: resolve(__dirname, 'index.html'),
       output: {
         manualChunks: {
           'element-plus': ['element-plus'],

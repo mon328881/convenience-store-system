@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "便利店进销存系统前端",
   "private": true,
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
