@@ -37,7 +37,7 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
     rollupOptions: {
-      input: resolve(__dirname, 'index.html'),
+      input: './index.html',
       output: {
         manualChunks: {
           'element-plus': ['element-plus'],
