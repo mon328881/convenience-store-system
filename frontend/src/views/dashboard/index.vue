@@ -145,6 +145,7 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart, BarChart } from 'echarts/charts'
