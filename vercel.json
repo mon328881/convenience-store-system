@@ -2,24 +2,18 @@
   "version": 2,
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "builds": [
+  "rewrites": [
     {
-      "src": "backend/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/backend/server.js"
+      "source": "/api/(.*)",
+      "destination": "/api"
     },
     {
-      "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "functions": {
-    "backend/server.js": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },

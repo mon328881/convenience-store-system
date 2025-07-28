@@ -3,7 +3,20 @@ const isDevelopment = import.meta?.env?.DEV ?? true  // 默认为开发环境
 const isProduction = import.meta?.env?.PROD ?? false
 
 // 根据环境设置 API 基础地址
-export const API_BASE_URL = '/api'  // 统一使用 /api，通过 Vite 代理处理
+export const API_BASE_URL = (() => {
+  // 生产环境：使用环境变量中的API地址
+  if (isProduction && import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL
+  }
+  
+  // 开发环境：使用代理
+  if (isDevelopment) {
+    return '/api'
+  }
+  
+  // 默认回退（用于Render等平台）
+  return window.location.origin + '/api'
+})()
 
 // API 端点配置
 export const API_ENDPOINTS = {
