@@ -239,6 +239,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Minus } from '@element-plus/icons-vue'
 import { formatDate } from '@/utils/date'
+import http from '@/config/http'
+import { API_ENDPOINTS } from '@/config/api'
 
 // 响应式数据
 const loading = ref(false)
@@ -291,26 +293,19 @@ const outboundRules = {
 }
 
 // 商品选项
-const productOptions = ref([
-  {
-    _id: '1',
-    name: '景田矿泉水',
-    brand: '景田',
-    specification: '550ml',
-    unit: '瓶',
-    retailPrice: 2.0,
-    currentStock: 120
-  },
-  {
-    _id: '2',
-    name: '百岁山矿泉水',
-    brand: '百岁山',
-    specification: '570ml',
-    unit: '瓶',
-    retailPrice: 2.5,
-    currentStock: 8
+const productOptions = ref([])
+
+// 获取商品选项
+const getProductOptions = async () => {
+  try {
+    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST)
+    if (response.data.success) {
+      productOptions.value = response.data.data.records || []
+    }
+  } catch (error) {
+    console.error('获取商品选项失败:', error)
   }
-])
+}
 
 // 选中的商品
 const selectedProduct = computed(() => {
@@ -348,42 +343,22 @@ const getOutboundTypeText = (type) => {
 const getOutboundRecords = async () => {
   loading.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const params = {
+      page: pagination.page,
+      limit: pagination.limit,
+      ...searchForm
+    }
     
-    // 模拟数据
-    outboundRecords.value = [
-      {
-        _id: '1',
-        productName: '景田矿泉水',
-        brand: '景田',
-        specification: '550ml',
-        quantity: 20,
-        unit: '瓶',
-        retailPrice: 2.0,
-        totalAmount: 40,
-        outboundType: 'sale',
-        outboundDate: new Date('2024-01-16'),
-        operator: 'admin',
-        notes: '正常销售'
-      },
-      {
-        _id: '2',
-        productName: '百岁山矿泉水',
-        brand: '百岁山',
-        specification: '570ml',
-        quantity: 2,
-        unit: '瓶',
-        retailPrice: 2.5,
-        totalAmount: 5,
-        outboundType: 'loss',
-        outboundDate: new Date('2024-01-21'),
-        operator: 'admin',
-        notes: '包装破损'
-      }
-    ]
-    pagination.total = outboundRecords.value.length
+    const response = await http.get(API_ENDPOINTS.OUTBOUND.LIST, { params })
+    
+    if (response.data.success) {
+      outboundRecords.value = response.data.data.records || []
+      pagination.total = response.data.data.total || 0
+    } else {
+      ElMessage.error(response.data.message || '获取出库记录失败')
+    }
   } catch (error) {
+    console.error('获取出库记录失败:', error)
     ElMessage.error('获取出库记录失败')
   } finally {
     loading.value = false
@@ -441,15 +416,29 @@ const saveOutbound = async () => {
       return
     }
     
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const outboundData = {
+      product: outboundForm.productId,
+      outboundType: outboundForm.outboundType,
+      quantity: outboundForm.quantity,
+      unitPrice: outboundForm.retailPrice, // 字段映射
+      outboundDate: outboundForm.outboundDate,
+      remark: outboundForm.notes, // 字段映射
+      createdBy: 'system' // 添加必填字段
+    }
     
-    ElMessage.success('出库成功')
-    showAddDialog.value = false
-    resetForm()
-    getOutboundRecords()
+    const response = await http.post(API_ENDPOINTS.OUTBOUND.CREATE, outboundData)
+    
+    if (response.data.success) {
+      ElMessage.success('出库成功')
+      showAddDialog.value = false
+      resetForm()
+      getOutboundRecords()
+    } else {
+      ElMessage.error(response.data.message || '出库失败')
+    }
   } catch (error) {
-    console.error('表单验证失败:', error)
+    console.error('出库失败:', error)
+    ElMessage.error('出库失败')
   }
 }
 
@@ -477,6 +466,7 @@ const resetForm = () => {
 // 组件挂载时获取数据
 onMounted(() => {
   getOutboundRecords()
+  getProductOptions()
 })
 </script>
 

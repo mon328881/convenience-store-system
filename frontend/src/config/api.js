@@ -1,11 +1,9 @@
 // API 配置
-const isDevelopment = import.meta.env.DEV
-const isProduction = import.meta.env.PROD
+const isDevelopment = import.meta?.env?.DEV ?? true  // 默认为开发环境
+const isProduction = import.meta?.env?.PROD ?? false
 
 // 根据环境设置 API 基础地址
-export const API_BASE_URL = isDevelopment 
-  ? '/api'  // 开发环境使用代理
-  : '/api'  // 生产环境使用相对路径（前后端同域名）
+export const API_BASE_URL = '/api'  // 统一使用 /api，通过 Vite 代理处理
 
 // API 端点配置
 export const API_ENDPOINTS = {
@@ -54,6 +52,9 @@ export const API_ENDPOINTS = {
   // 报表统计
   REPORTS: {
     DASHBOARD: '/reports/dashboard',
+    STATS: '/reports/stats',
+    CATEGORY_STATS: '/reports/category-stats',
+    BRAND_STATS: '/reports/brand-stats',
     SALES: '/reports/sales',
     INVENTORY: '/reports/inventory',
     PROFIT: '/reports/profit'

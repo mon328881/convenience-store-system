@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Configuration Test</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        import { API_BASE_URL, API_ENDPOINTS } from './src/config/api.js';
+        import http from './src/config/http.js';
+        
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        // 显示配置
+        log('API_BASE_URL: ' + API_BASE_URL);
+        log('Suppliers endpoint: ' + API_ENDPOINTS.SUPPLIERS.LIST);
+        log('Full URL would be: ' + API_BASE_URL + API_ENDPOINTS.SUPPLIERS.LIST);
+        
+        // 检查axios实例配置
+        log('Axios baseURL: ' + http.defaults.baseURL);
+        log('Axios instance: ' + typeof http);
+        
+        // 测试实际请求
+        log('Testing actual request...');
+        
+        // 手动构造URL来测试
+        const testUrl = API_ENDPOINTS.SUPPLIERS.LIST + '?page=1&limit=5';
+        log('Making request to: ' + testUrl);
+        
+        http.get(testUrl)
+            .then(response => {
+                log('Request successful!');
+                log('Response data: ' + JSON.stringify(response.data, null, 2));
+            })
+            .catch(error => {
+                log('Request failed: ' + error.message);
+                if (error.config) {
+                    log('Request URL was: ' + error.config.url);
+                    log('Request baseURL was: ' + error.config.baseURL);
+                }
+            });
+    </script>
+</body>
+</html>

@@ -130,15 +130,14 @@
             v-model="supplierForm.products"
             multiple
             filterable
-            allow-create
-            placeholder="请选择或输入供货商品"
+            placeholder="请选择供货商品"
             style="width: 100%"
           >
             <el-option
-              v-for="product in productOptions"
-              :key="product"
-              :label="product"
-              :value="product"
+              v-for="option in productOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
             />
           </el-select>
         </el-form-item>
@@ -191,6 +190,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { formatDate } from '@/utils/date'
+import http from '@/config/http'
+import { API_ENDPOINTS } from '@/config/api'
 
 // 响应式数据
 const loading = ref(false)
@@ -245,49 +246,58 @@ const supplierRules = {
   ]
 }
 
-// 商品选项（模拟数据）
-const productOptions = ref([
-  '矿泉水', '饮料', '零食', '烟酒', '日用品', '调料', '米面油', '冷冻食品'
-])
+// 商品选项（从商品管理API获取）
+const productOptions = ref([])
+
+// 获取商品选项
+const getProductOptions = async () => {
+  try {
+    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST, {
+      params: { limit: 1000 } // 获取所有商品用于选择
+    })
+    if (response.data.success) {
+      // 将商品数据转换为选项格式，使用商品名称作为选项值
+      productOptions.value = response.data.data.products?.map(product => ({
+        label: `${product.name} (${product.brand})`,
+        value: product.name,
+        product: product
+      })) || []
+    } else {
+      ElMessage.error(response.data.message || '获取商品选项失败')
+    }
+  } catch (error) {
+      console.error('获取商品选项失败:', error)
+      ElMessage.error('获取商品选项失败')
+    }
+}
 
 // 获取供应商列表
 const getSuppliers = async () => {
   loading.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const params = {
+      page: pagination.page,
+      limit: pagination.limit
+    }
     
-    // 模拟数据
-    suppliers.value = [
-      {
-        _id: '1',
-        name: '景田饮用水供应商',
-        contact: '张经理',
-        phone: '13800138001',
-        products: ['景田矿泉水', '景田纯净水'],
-        paymentMethod: '月结',
-        needInvoice: true,
-        address: '广东省深圳市',
-        notes: '主要供应景田系列产品',
-        status: 'active',
-        createdAt: new Date('2024-01-15')
-      },
-      {
-        _id: '2',
-        name: '百岁山水业',
-        contact: '李总',
-        phone: '13900139002',
-        products: ['百岁山矿泉水'],
-        paymentMethod: '银行转账',
-        needInvoice: true,
-        address: '广东省惠州市',
-        notes: '百岁山官方供应商',
-        status: 'active',
-        createdAt: new Date('2024-01-20')
-      }
-    ]
-    pagination.total = suppliers.value.length
+    // 添加搜索条件
+    if (searchForm.name) {
+      params.search = searchForm.name
+    }
+    if (searchForm.status) {
+      params.status = searchForm.status
+    }
+    
+    const response = await http.get(API_ENDPOINTS.SUPPLIERS.LIST, { params })
+    
+    if (response.data.success) {
+      suppliers.value = response.data.data
+      pagination.total = response.data.pagination.total
+    } else {
+      ElMessage.error(response.data.message || '获取供应商列表失败')
+    }
   } catch (error) {
+    console.error('获取供应商列表失败:', error)
     ElMessage.error('获取供应商列表失败')
   } finally {
     loading.value = false
@@ -322,7 +332,18 @@ const handleCurrentChange = (val) => {
 // 编辑供应商
 const editSupplier = (supplier) => {
   editingSupplier.value = supplier
-  Object.assign(supplierForm, supplier)
+  // 处理字段映射
+  Object.assign(supplierForm, {
+    name: supplier.name,
+    contact: supplier.contact,
+    phone: supplier.phone,
+    products: supplier.products || [],
+    paymentMethod: supplier.paymentMethod,
+    needInvoice: supplier.hasInvoice || false, // 字段映射
+    address: supplier.address || '',
+    notes: supplier.remark || '', // 字段映射
+    status: supplier.status
+  })
   showAddDialog.value = true
 }
 
@@ -333,20 +354,45 @@ const saveSupplier = async () => {
   try {
     await supplierFormRef.value.validate()
     
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    if (editingSupplier.value) {
-      ElMessage.success('供应商更新成功')
-    } else {
-      ElMessage.success('供应商添加成功')
+    // 准备提交数据，处理字段映射
+    const submitData = {
+      name: supplierForm.name,
+      contact: supplierForm.contact,
+      phone: supplierForm.phone,
+      products: supplierForm.products,
+      paymentMethod: supplierForm.paymentMethod,
+      hasInvoice: supplierForm.needInvoice, // 字段映射
+      address: supplierForm.address,
+      remark: supplierForm.notes, // 字段映射
+      status: supplierForm.status,
+      createdBy: 'system' // 添加必填字段
     }
     
-    showAddDialog.value = false
-    resetForm()
-    getSuppliers()
+    let response
+    if (editingSupplier.value) {
+      // 更新供应商
+      submitData.updatedBy = 'system' // 更新时添加updatedBy字段
+      response = await http.put(API_ENDPOINTS.SUPPLIERS.UPDATE(editingSupplier.value._id), submitData)
+    } else {
+      // 创建供应商
+      response = await http.post(API_ENDPOINTS.SUPPLIERS.CREATE, submitData)
+    }
+    
+    if (response.data.success) {
+      ElMessage.success(response.data.message || (editingSupplier.value ? '供应商更新成功' : '供应商添加成功'))
+      showAddDialog.value = false
+      resetForm()
+      getSuppliers()
+    } else {
+      ElMessage.error(response.data.message || '操作失败')
+    }
   } catch (error) {
-    console.error('表单验证失败:', error)
+    console.error('保存供应商失败:', error)
+    if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message)
+    } else {
+      ElMessage.error('保存失败，请检查网络连接')
+    }
   }
 }
 
@@ -359,14 +405,22 @@ const deleteSupplier = async (id) => {
       type: 'warning'
     })
     
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const response = await http.delete(API_ENDPOINTS.SUPPLIERS.DELETE(id))
     
-    ElMessage.success('删除成功')
-    getSuppliers()
+    if (response.data.success) {
+      ElMessage.success(response.data.message || '删除成功')
+      getSuppliers()
+    } else {
+      ElMessage.error(response.data.message || '删除失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      console.error('删除供应商失败:', error)
+      if (error.response?.data?.message) {
+        ElMessage.error(error.response.data.message)
+      } else {
+        ElMessage.error('删除失败，请检查网络连接')
+      }
     }
   }
 }
@@ -393,6 +447,7 @@ const resetForm = () => {
 // 组件挂载时获取数据
 onMounted(() => {
   getSuppliers()
+  getProductOptions()
 })
 </script>
 

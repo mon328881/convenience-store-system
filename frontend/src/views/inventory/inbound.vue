@@ -227,6 +227,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { formatDate } from '@/utils/date'
+import http from '@/config/http'
+import { API_ENDPOINTS } from '@/config/api'
 
 // 响应式数据
 const loading = ref(false)
@@ -279,30 +281,40 @@ const inboundRules = {
 }
 
 // 商品选项
-const productOptions = ref([
-  {
-    _id: '1',
-    name: '景田矿泉水',
-    brand: '景田',
-    specification: '550ml',
-    unit: '瓶',
-    purchasePrice: 1.5
-  },
-  {
-    _id: '2',
-    name: '百岁山矿泉水',
-    brand: '百岁山',
-    specification: '570ml',
-    unit: '瓶',
-    purchasePrice: 1.8
-  }
-])
+const productOptions = ref([])
 
 // 供应商选项
-const supplierOptions = ref([
-  { _id: '1', name: '景田饮用水供应商' },
-  { _id: '2', name: '百岁山水业' }
-])
+const supplierOptions = ref([])
+
+// 获取商品选项
+const getProductOptions = async () => {
+  try {
+    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST, { 
+      params: { status: 'active', limit: 1000 } 
+    })
+    
+    if (response.data.success) {
+      productOptions.value = response.data.data.products || []
+    }
+  } catch (error) {
+    console.error('获取商品选项失败:', error)
+  }
+}
+
+// 获取供应商选项
+const getSupplierOptions = async () => {
+  try {
+    const response = await http.get(API_ENDPOINTS.SUPPLIERS.LIST, { 
+      params: { status: 'active', limit: 1000 } 
+    })
+    
+    if (response.data.success) {
+      supplierOptions.value = response.data.data.suppliers || []
+    }
+  } catch (error) {
+    console.error('获取供应商选项失败:', error)
+  }
+}
 
 // 计算总金额
 const totalAmount = computed(() => {
@@ -313,42 +325,22 @@ const totalAmount = computed(() => {
 const getInboundRecords = async () => {
   loading.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const params = {
+      page: pagination.page,
+      limit: pagination.limit,
+      ...searchForm
+    }
     
-    // 模拟数据
-    inboundRecords.value = [
-      {
-        _id: '1',
-        productName: '景田矿泉水',
-        brand: '景田',
-        specification: '550ml',
-        quantity: 100,
-        unit: '瓶',
-        purchasePrice: 1.5,
-        totalAmount: 150,
-        supplierName: '景田饮用水供应商',
-        inboundDate: new Date('2024-01-15'),
-        operator: 'admin',
-        notes: '首次进货'
-      },
-      {
-        _id: '2',
-        productName: '百岁山矿泉水',
-        brand: '百岁山',
-        specification: '570ml',
-        quantity: 50,
-        unit: '瓶',
-        purchasePrice: 1.8,
-        totalAmount: 90,
-        supplierName: '百岁山水业',
-        inboundDate: new Date('2024-01-20'),
-        operator: 'admin',
-        notes: '补充库存'
-      }
-    ]
-    pagination.total = inboundRecords.value.length
+    const response = await http.get(API_ENDPOINTS.INBOUND.LIST, { params })
+    
+    if (response.data.success) {
+      inboundRecords.value = response.data.data.records || []
+      pagination.total = response.data.data.total || 0
+    } else {
+      ElMessage.error(response.data.message || '获取入库记录失败')
+    }
   } catch (error) {
+    console.error('获取入库记录失败:', error)
     ElMessage.error('获取入库记录失败')
   } finally {
     loading.value = false
@@ -400,15 +392,29 @@ const saveInbound = async () => {
   try {
     await inboundFormRef.value.validate()
     
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const inboundData = {
+      product: inboundForm.productId,
+      supplier: inboundForm.supplierId,
+      quantity: inboundForm.quantity,
+      unitPrice: inboundForm.purchasePrice, // 字段映射
+      inboundDate: inboundForm.inboundDate,
+      remark: inboundForm.notes, // 字段映射
+      createdBy: 'system' // 添加必填字段
+    }
     
-    ElMessage.success('入库成功')
-    showAddDialog.value = false
-    resetForm()
-    getInboundRecords()
+    const response = await http.post(API_ENDPOINTS.INBOUND.CREATE, inboundData)
+    
+    if (response.data.success) {
+      ElMessage.success(response.data.message || '入库成功')
+      showAddDialog.value = false
+      resetForm()
+      getInboundRecords()
+    } else {
+      ElMessage.error(response.data.message || '入库失败')
+    }
   } catch (error) {
-    console.error('表单验证失败:', error)
+    console.error('入库失败:', error)
+    ElMessage.error('入库失败')
   }
 }
 
@@ -436,6 +442,8 @@ const resetForm = () => {
 // 组件挂载时获取数据
 onMounted(() => {
   getInboundRecords()
+  getProductOptions()
+  getSupplierOptions()
 })
 </script>
 

@@ -61,7 +61,10 @@ router.get('/', async (req, res) => {
     
     res.json({
       success: true,
-      data: products,
+      data: {
+        products: products,
+        total: total
+      },
       pagination: {
         current: parseInt(page),
         pageSize: parseInt(limit),
@@ -145,8 +148,11 @@ router.post('/', [
   body('specification').notEmpty().withMessage('规格不能为空')
 ], async (req, res) => {
   try {
+    console.log('收到创建商品请求:', req.body);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('数据验证失败:', errors.array());
       return res.status(400).json({ 
         success: false, 
         message: '数据验证失败',
@@ -160,6 +166,7 @@ router.post('/', [
       brand: req.body.brand
     });
     if (existingProduct) {
+      console.log('商品已存在:', existingProduct);
       return res.status(400).json({ success: false, message: '该品牌下的商品名称已存在' });
     }
 
@@ -168,9 +175,13 @@ router.post('/', [
       createdBy: req.user?.username || 'system'
     });
 
-    await product.save();
-    res.status(201).json({ success: true, data: product, message: '商品创建成功' });
+    console.log('准备保存商品:', product);
+    const savedProduct = await product.save();
+    console.log('商品保存成功:', savedProduct);
+    
+    res.status(201).json({ success: true, data: savedProduct, message: '商品创建成功' });
   } catch (error) {
+    console.error('创建商品失败:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

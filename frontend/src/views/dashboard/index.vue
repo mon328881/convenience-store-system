@@ -156,6 +156,8 @@ import {
   GridComponent
 } from 'echarts/components'
 import VChart from 'vue-echarts'
+import http from '@/config/http'
+import { API_ENDPOINTS } from '@/config/api'
 
 use([
   CanvasRenderer,
@@ -249,44 +251,57 @@ const brandChartOption = computed(() => ({
 // 加载统计数据
 const loadStats = async () => {
   try {
-    // 这里应该调用API获取真实数据
-    // 暂时使用模拟数据
-    stats.value = {
-      totalProducts: 156,
-      totalSuppliers: 12,
-      lowStockProducts: 8,
-      outOfStockProducts: 3
+    // 获取统计数据
+    const statsResponse = await http.get(API_ENDPOINTS.REPORTS.STATS)
+    if (statsResponse.data.success) {
+      stats.value = {
+        totalProducts: statsResponse.data.data.totalProducts || 0,
+        totalSuppliers: statsResponse.data.data.totalSuppliers || 0,
+        lowStockProducts: statsResponse.data.data.lowStockProducts || 0,
+        outOfStockProducts: statsResponse.data.data.outOfStockProducts || 0
+      }
     }
     
-    categoryStats.value = [
-      { _id: '饮料', count: 45 },
-      { _id: '零食', count: 38 },
-      { _id: '日用品', count: 32 },
-      { _id: '烟酒', count: 25 },
-      { _id: '其他', count: 16 }
-    ]
+    // 获取分类统计
+    const categoryResponse = await http.get(API_ENDPOINTS.REPORTS.CATEGORY_STATS)
+    if (categoryResponse.data.success) {
+      categoryStats.value = categoryResponse.data.data || []
+    }
     
-    brandStats.value = [
-      { _id: '景田', count: 15 },
-      { _id: '百岁山', count: 12 },
-      { _id: '娃哈哈', count: 18 },
-      { _id: '农夫山泉', count: 20 },
-      { _id: '怡宝', count: 14 }
-    ]
+    // 获取品牌统计
+    const brandResponse = await http.get(API_ENDPOINTS.REPORTS.BRAND_STATS)
+    if (brandResponse.data.success) {
+      brandStats.value = brandResponse.data.data || []
+    }
     
-    recentInbound.value = [
-      { productName: '景田百岁山 550ml', quantity: 50, createdAt: '2024-01-15' },
-      { productName: '娃哈哈纯净水 500ml', quantity: 30, createdAt: '2024-01-14' },
-      { productName: '农夫山泉 380ml', quantity: 40, createdAt: '2024-01-13' }
-    ]
+    // 获取最近入库记录
+    const inboundResponse = await http.get(API_ENDPOINTS.INBOUND.LIST, { 
+      params: { page: 1, limit: 5 } 
+    })
+    if (inboundResponse.data.success) {
+      recentInbound.value = inboundResponse.data.data.records || []
+    }
     
-    recentOutbound.value = [
-      { productName: '怡宝纯净水 550ml', quantity: 20, createdAt: '2024-01-15' },
-      { productName: '景田百岁山 350ml', quantity: 15, createdAt: '2024-01-14' },
-      { productName: '农夫山泉 500ml', quantity: 25, createdAt: '2024-01-13' }
-    ]
+    // 获取最近出库记录
+    const outboundResponse = await http.get(API_ENDPOINTS.OUTBOUND.LIST, { 
+      params: { page: 1, limit: 5 } 
+    })
+    if (outboundResponse.data.success) {
+      recentOutbound.value = outboundResponse.data.data.records || []
+    }
   } catch (error) {
     console.error('加载统计数据失败:', error)
+    // 如果API调用失败，使用默认数据
+    stats.value = {
+      totalProducts: 0,
+      totalSuppliers: 0,
+      lowStockProducts: 0,
+      outOfStockProducts: 0
+    }
+    categoryStats.value = []
+    brandStats.value = []
+    recentInbound.value = []
+    recentOutbound.value = []
   }
 }
 

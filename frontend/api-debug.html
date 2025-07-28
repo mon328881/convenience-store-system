@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Debug Test</title>
+</head>
+<body>
+    <h1>API Configuration Debug</h1>
+    <div id="output"></div>
+    <button onclick="testAPI()">Test API Call</button>
+    
+    <script type="module">
+        import { API_BASE_URL, API_ENDPOINTS } from './src/config/api.js';
+        import http from './src/config/http.js';
+        
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            output.innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        // 显示配置
+        log('=== Configuration ===');
+        log('API_BASE_URL: "' + API_BASE_URL + '"');
+        log('API_BASE_URL type: ' + typeof API_BASE_URL);
+        log('API_BASE_URL length: ' + (API_BASE_URL ? API_BASE_URL.length : 'undefined'));
+        log('Suppliers endpoint: "' + API_ENDPOINTS.SUPPLIERS.LIST + '"');
+        log('Full URL would be: "' + API_BASE_URL + API_ENDPOINTS.SUPPLIERS.LIST + '"');
+        
+        // 检查axios实例配置
+        log('=== Axios Configuration ===');
+        log('Axios baseURL: "' + http.defaults.baseURL + '"');
+        log('Axios baseURL type: ' + typeof http.defaults.baseURL);
+        log('Axios baseURL length: ' + (http.defaults.baseURL ? http.defaults.baseURL.length : 'undefined'));
+        
+        // 全局测试函数
+        window.testAPI = function() {
+            log('=== Testing API Call ===');
+            const testUrl = API_ENDPOINTS.SUPPLIERS.LIST + '?page=1&limit=5';
+            log('Making request to: "' + testUrl + '"');
+            log('With baseURL: "' + http.defaults.baseURL + '"');
+            log('Final URL will be: "' + http.defaults.baseURL + testUrl + '"');
+            
+            http.get(testUrl)
+                .then(response => {
+                    log('✅ Request successful!');
+                    log('Response status: ' + response.status);
+                    log('Response data: ' + JSON.stringify(response.data, null, 2));
+                })
+                .catch(error => {
+                    log('❌ Request failed: ' + error.message);
+                    if (error.config) {
+                        log('Request URL was: "' + error.config.url + '"');
+                        log('Request baseURL was: "' + error.config.baseURL + '"');
+                        log('Request method: ' + error.config.method);
+                    }
+                    if (error.response) {
+                        log('Response status: ' + error.response.status);
+                        log('Response data: ' + JSON.stringify(error.response.data, null, 2));
+                    }
+                });
+        };
+        
+        // 自动运行一次测试
+        log('=== Auto Test ===');
+        testAPI();
+    </script>
+</body>
+</html>

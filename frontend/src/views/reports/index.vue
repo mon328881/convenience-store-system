@@ -131,7 +131,7 @@
               <el-table-column prop="sales" label="销量" width="80" />
               <el-table-column prop="revenue" label="销售额" width="100">
                 <template #default="scope">
-                  ¥{{ scope.row.revenue.toFixed(2) }}
+                  ¥{{ (scope.row.revenue || 0).toFixed(2) }}
                 </template>
               </el-table-column>
             </el-table>
@@ -176,6 +176,8 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Box, User, Warning, Close } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import http from '@/config/http'
+import { API_ENDPOINTS } from '@/config/api'
 
 // 图表引用
 const categoryChartRef = ref()
@@ -365,12 +367,33 @@ const updateSalesTrend = () => {
 // 获取统计数据
 const getStatsData = async () => {
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const response = await http.get(API_ENDPOINTS.REPORTS.STATS)
     
-    // 这里可以调用实际的API获取统计数据
-    ElMessage.success('统计数据加载完成')
+    if (response.data.success) {
+      const data = response.data.data
+      Object.assign(statsData, {
+        totalProducts: data.totalProducts || 0,
+        totalSuppliers: data.totalSuppliers || 0,
+        lowStockProducts: data.lowStockProducts || 0,
+        outOfStockProducts: data.outOfStockProducts || 0
+      })
+      
+      // 更新热销商品数据
+      if (data.hotProducts) {
+        hotProducts.value = data.hotProducts
+      }
+      
+      // 更新库存预警数据
+      if (data.lowStockItems) {
+        lowStockItems.value = data.lowStockItems
+      }
+      
+      ElMessage.success('统计数据加载完成')
+    } else {
+      ElMessage.error(response.data.message || '获取统计数据失败')
+    }
   } catch (error) {
+    console.error('获取统计数据失败:', error)
     ElMessage.error('获取统计数据失败')
   }
 }

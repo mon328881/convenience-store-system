@@ -65,6 +65,11 @@
             ¥{{ scope.row.purchasePrice.toFixed(2) }}
           </template>
         </el-table-column>
+        <el-table-column prop="inputPrice" label="录入单价" width="80">
+          <template #default="scope">
+            ¥{{ scope.row.inputPrice.toFixed(2) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="retailPrice" label="零售价" width="80">
           <template #default="scope">
             ¥{{ scope.row.retailPrice.toFixed(2) }}
@@ -123,7 +128,7 @@
     <el-dialog
       v-model="showAddDialog"
       :title="editingProduct ? '编辑商品' : '添加商品'"
-      width="600px"
+      width="700px"
     >
       <el-form
         ref="productFormRef"
@@ -161,37 +166,52 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <!-- 价格字段分成两行 -->
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="采购价" prop="purchasePrice">
               <el-input-number
                 v-model="productForm.purchasePrice"
                 :precision="2"
-                :step="0.1"
+                :step="0.01"
                 :min="0"
+                :max="99999"
+                controls-position="right"
+                placeholder="请输入采购价"
                 style="width: 100%"
+                class="price-input"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="零售价" prop="retailPrice">
+            <el-form-item label="录入单价" prop="inputPrice">
               <el-input-number
-                v-model="productForm.retailPrice"
+                v-model="productForm.inputPrice"
                 :precision="2"
-                :step="0.1"
+                :step="0.01"
                 :min="0"
+                :max="99999"
+                controls-position="right"
+                placeholder="请输入录入单价"
                 style="width: 100%"
+                class="price-input"
               />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="库存预警" prop="stockAlert">
+            <el-form-item label="零售价" prop="retailPrice">
               <el-input-number
-                v-model="productForm.stockAlert"
+                v-model="productForm.retailPrice"
+                :precision="2"
+                :step="0.01"
                 :min="0"
+                :max="99999"
+                controls-position="right"
+                placeholder="请输入零售价"
                 style="width: 100%"
+                class="price-input"
               />
             </el-form-item>
           </el-col>
@@ -208,9 +228,22 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="条形码">
-          <el-input v-model="productForm.barcode" placeholder="请输入条形码" />
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="库存预警" prop="stockAlert">
+              <el-input-number
+                v-model="productForm.stockAlert"
+                :min="0"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="条形码">
+              <el-input v-model="productForm.barcode" placeholder="请输入条形码" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="状态">
           <el-radio-group v-model="productForm.status">
             <el-radio label="active">在售</el-radio>
@@ -229,9 +262,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import http from '@/config/http'
+import { API_ENDPOINTS } from '@/config/api'
 import { formatDate } from '@/utils/date'
 
 // 响应式数据
@@ -262,10 +297,11 @@ const productForm = reactive({
   brand: '',
   category: '',
   specification: '',
-  purchasePrice: 0,
-  retailPrice: 0,
+  purchasePrice: 0.00,
+  inputPrice: 0.00,
+  retailPrice: 0.00,
   stockAlert: 10,
-  unit: '',
+  unit: '件',
   barcode: '',
   status: 'active'
 })
@@ -287,6 +323,9 @@ const productRules = {
   purchasePrice: [
     { required: true, message: '请输入采购价', trigger: 'blur' }
   ],
+  inputPrice: [
+    { required: true, message: '请输入录入单价', trigger: 'blur' }
+  ],
   retailPrice: [
     { required: true, message: '请输入零售价', trigger: 'blur' }
   ],
@@ -299,44 +338,22 @@ const productRules = {
 const getProducts = async () => {
   loading.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const params = {
+      page: pagination.page,
+      limit: pagination.limit,
+      ...searchForm
+    }
     
-    // 模拟数据
-    products.value = [
-      {
-        _id: '1',
-        name: '景田矿泉水',
-        brand: '景田',
-        category: '饮料',
-        specification: '550ml',
-        purchasePrice: 1.5,
-        retailPrice: 2.0,
-        currentStock: 120,
-        stockAlert: 20,
-        unit: '瓶',
-        barcode: '6901234567890',
-        status: 'active',
-        createdAt: new Date('2024-01-15')
-      },
-      {
-        _id: '2',
-        name: '百岁山矿泉水',
-        brand: '百岁山',
-        category: '饮料',
-        specification: '570ml',
-        purchasePrice: 1.8,
-        retailPrice: 2.5,
-        currentStock: 8,
-        stockAlert: 15,
-        unit: '瓶',
-        barcode: '6901234567891',
-        status: 'active',
-        createdAt: new Date('2024-01-20')
-      }
-    ]
-    pagination.total = products.value.length
+    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST, { params })
+    
+    if (response.data.success) {
+      products.value = response.data.data.products || []
+      pagination.total = response.data.data.total || 0
+    } else {
+      ElMessage.error(response.data.message || '获取商品列表失败')
+    }
   } catch (error) {
+    console.error('获取商品列表失败:', error)
     ElMessage.error('获取商品列表失败')
   } finally {
     loading.value = false
@@ -384,20 +401,65 @@ const saveProduct = async () => {
   try {
     await productFormRef.value.validate()
     
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    if (editingProduct.value) {
-      ElMessage.success('商品更新成功')
-    } else {
-      ElMessage.success('商品添加成功')
+    const productData = {
+      name: productForm.name,
+      brand: productForm.brand,
+      category: productForm.category,
+      specification: productForm.specification,
+      purchasePrice: Number(productForm.purchasePrice),
+      inputPrice: Number(productForm.inputPrice),
+      retailPrice: Number(productForm.retailPrice),
+      stockAlert: Number(productForm.stockAlert),
+      unit: productForm.unit,
+      status: productForm.status,
+      createdBy: 'system' // 添加必填字段
     }
     
-    showAddDialog.value = false
-    resetForm()
-    getProducts()
+    // 只有当条形码不为空时才添加到数据中
+    if (productForm.barcode && productForm.barcode.trim() !== '') {
+      productData.barcode = productForm.barcode.trim()
+    }
+    
+    console.log('发送的商品数据:', productData)
+    
+    let response
+    if (editingProduct.value) {
+      // 更新商品
+      productData.updatedBy = 'system' // 更新时添加updatedBy字段
+      response = await http.put(API_ENDPOINTS.PRODUCTS.UPDATE(editingProduct.value._id), productData)
+    } else {
+      // 创建商品
+      response = await http.post(API_ENDPOINTS.PRODUCTS.CREATE, productData)
+    }
+    
+    console.log('服务器响应:', response.data)
+    
+    if (response.data.success) {
+      ElMessage.success(response.data.message || (editingProduct.value ? '商品更新成功' : '商品添加成功'))
+      showAddDialog.value = false
+      resetForm()
+      // 如果是新增商品，重置到第一页
+      if (!editingProduct.value) {
+        pagination.page = 1
+      }
+      getProducts()
+    } else {
+      console.error('保存失败，服务器返回:', response.data)
+      ElMessage.error(response.data.message || '保存失败')
+    }
   } catch (error) {
-    console.error('表单验证失败:', error)
+    console.error('保存商品失败，完整错误信息:', error)
+    if (error.response) {
+      console.error('错误响应数据:', error.response.data)
+      console.error('错误状态码:', error.response.status)
+      ElMessage.error(error.response.data.message || `服务器错误 (${error.response.status})`)
+    } else if (error.request) {
+      console.error('请求错误:', error.request)
+      ElMessage.error('网络请求失败，请检查网络连接')
+    } else {
+      console.error('其他错误:', error.message)
+      ElMessage.error('保存商品失败: ' + error.message)
+    }
   }
 }
 
@@ -410,13 +472,17 @@ const deleteProduct = async (id) => {
       type: 'warning'
     })
     
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    const response = await http.delete(API_ENDPOINTS.PRODUCTS.DELETE(id))
     
-    ElMessage.success('删除成功')
-    getProducts()
+    if (response.data.success) {
+      ElMessage.success(response.data.message || '删除成功')
+      getProducts()
+    } else {
+      ElMessage.error(response.data.message || '删除失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('删除商品失败:', error)
       ElMessage.error('删除失败')
     }
   }
@@ -429,10 +495,11 @@ const resetForm = () => {
     brand: '',
     category: '',
     specification: '',
-    purchasePrice: 0,
-    retailPrice: 0,
+    purchasePrice: 0.00,
+    inputPrice: 0.00,
+    retailPrice: 0.00,
     stockAlert: 10,
-    unit: '',
+    unit: '件',
     barcode: '',
     status: 'active'
   })
@@ -499,5 +566,67 @@ onMounted(() => {
 .low-stock {
   color: #f56c6c;
   font-weight: bold;
+}
+
+/* 价格输入框样式优化 */
+.price-input {
+  width: 100% !important;
+}
+
+.price-input .el-input-number__increase,
+.price-input .el-input-number__decrease {
+  background-color: #f5f7fa !important;
+  border-color: #dcdfe6 !important;
+  color: #606266 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+}
+
+.price-input .el-input-number__increase:hover,
+.price-input .el-input-number__decrease:hover {
+  background-color: #409eff !important;
+  color: #fff !important;
+}
+
+.price-input .el-input__inner {
+  text-align: left !important;
+  padding-right: 50px !important;
+}
+
+/* 确保所有数字输入框都能正常工作 */
+:deep(.el-input-number) {
+  width: 100%;
+}
+
+:deep(.el-input-number .el-input-number__increase),
+:deep(.el-input-number .el-input-number__decrease) {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* 价格输入框样式优化 */
+:deep(.price-input) {
+  width: 100%;
+}
+
+:deep(.price-input .el-input-number) {
+  width: 100%;
+}
+
+:deep(.price-input .el-input__inner) {
+  text-align: left;
+  font-size: 12px !important;
+  height: 32px;
+  line-height: 32px;
+  padding: 0 8px !important;
+}
+
+:deep(.price-input .el-input-number__input) {
+  text-align: left;
+  font-size: 12px !important;
+  height: 32px;
+  line-height: 32px;
+  padding: 0 8px !important;
 }
 </style>
