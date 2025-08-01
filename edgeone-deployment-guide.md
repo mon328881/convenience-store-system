@@ -63,7 +63,9 @@ Node.js版本: 18.x
 - 系统会自动解压并部署
 - 等待部署完成（通常需要1-3分钟）
 
-### 第六步：配置环境变量
+### 第六步：配置环境变量（重要！）
+
+⚠️ **必须在EdgeOne控制台中配置环境变量，否则会出现401错误**
 
 在项目设置中添加以下环境变量：
 
@@ -71,8 +73,16 @@ Node.js版本: 18.x
 |--------|----|----|
 | `VITE_DEPLOYMENT_TYPE` | `edgeone` | 部署类型 |
 | `VITE_EDGEONE_API_URL` | `https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com` | API地址 |
+| `VITE_SUPABASE_URL` | `https://nxogjfzasogjzbkpfwle.supabase.co` | Supabase数据库URL |
+| `VITE_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54b2dqZnphc29nanpia3Bmd2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU3MjU2NzcsImV4cCI6MjA1MTMwMTY3N30.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8` | Supabase匿名密钥 |
 | `VITE_APP_NAME` | `库存管理系统` | 应用名称 |
 | `VITE_ENABLE_MOCK` | `false` | 禁用模拟数据 |
+
+#### 如何配置环境变量：
+1. 在EdgeOne控制台进入您的Pages项目
+2. 点击"设置" → "环境变量"
+3. 逐一添加上述环境变量
+4. 保存后重新部署项目
 
 ### 第七步：部署项目
 
@@ -103,7 +113,38 @@ Node.js版本: 18.x
 
 ## 常见问题排除
 
-### 问题1：页面空白或加载失败
+### 问题1：页面显示401 UNAUTHORIZED错误
+**症状**：访问部署的网站显示"401: UNAUTHORIZED 抱歉，您暂时无法访问该网站"
+
+**可能原因**：
+- EdgeOne控制台中未配置环境变量
+- 环境变量配置不完整或错误
+- 构建时未正确读取环境变量
+
+**解决方案**：
+1. **检查环境变量配置**：
+   - 登录EdgeOne控制台
+   - 进入Pages项目设置
+   - 确认所有必需的环境变量都已配置：
+     ```
+     VITE_DEPLOYMENT_TYPE=edgeone
+     VITE_EDGEONE_API_URL=https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com
+     VITE_SUPABASE_URL=https://nxogjfzasogjzbkpfwle.supabase.co
+     VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+     VITE_APP_NAME=库存管理系统
+     VITE_ENABLE_MOCK=false
+     ```
+
+2. **重新部署项目**：
+   - 配置环境变量后，必须重新触发部署
+   - 在Git仓库部署方式下，可以推送一个小的更改来触发重新部署
+   - 或在控制台手动触发重新部署
+
+3. **验证构建日志**：
+   - 检查构建日志中是否有环境变量相关的错误
+   - 确认构建命令正确执行了 `cp .env.edgeone .env`
+
+### 问题2：页面空白或加载失败
 **可能原因**：
 - 静态资源路径错误
 - 环境变量配置错误
@@ -113,7 +154,7 @@ Node.js版本: 18.x
 2. 验证环境变量配置
 3. 检查API地址是否可访问
 
-### 问题2：API调用失败
+### 问题3：API调用失败
 **可能原因**：
 - API地址配置错误
 - 跨域问题
@@ -124,7 +165,7 @@ Node.js版本: 18.x
 2. 检查后端服务状态
 3. 确认环境变量配置正确
 
-### 问题3：样式异常
+### 问题4：样式异常
 **可能原因**：
 - CSS文件加载失败
 - 静态资源路径错误
