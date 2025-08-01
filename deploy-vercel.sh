@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Vercel 部署脚本
-# 用于便利店进销存系统的自动化部署
+# Vercel 部署脚本 - 简化版
+# 用于便利店进销存系统的自动化部署（仅前端静态文件）
 
 echo "🚀 开始部署便利店进销存系统到 Vercel..."
 
@@ -21,6 +21,11 @@ fi
 # 构建前端项目
 echo "🔨 构建前端项目..."
 cd frontend
+
+# 使用Vercel专用环境变量
+echo "📝 配置Vercel环境变量..."
+cp .env.vercel .env
+
 npm install
 npm run build
 cd ..
@@ -42,10 +47,10 @@ echo ""
 echo "📋 部署后检查清单："
 echo "1. 访问你的 Vercel 应用 URL"
 echo "2. 检查前端页面是否正常加载"
-echo "3. 测试 API 功能是否正常"
-echo "4. 确认数据库连接是否成功"
+echo "3. 测试数据库连接是否正常（直连Supabase）"
+echo "4. 确认所有功能是否正常工作"
 echo ""
 echo "🔧 如果遇到问题，请检查："
-echo "1. Vercel 环境变量是否正确配置"
-echo "2. MongoDB Atlas 网络访问设置"
+echo "1. Supabase连接配置是否正确"
+echo "2. 前端环境变量是否正确设置"
 echo "3. 查看 Vercel 部署日志"
