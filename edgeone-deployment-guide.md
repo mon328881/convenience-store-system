@@ -1,73 +1,67 @@
 # 腾讯云EdgeOne前端部署指南
 
-## 概述
-
-本指南将帮助您将便利店进销存系统的前端项目部署到腾讯云EdgeOne Pages，实现免费的静态网站托管。
-
-## 准备工作
+## 📋 准备工作
 
 ### 1. 确认构建完成
-- ✅ 前端项目已构建完成
-- ✅ 构建文件位于 `frontend/dist` 目录
-- ✅ 部署包 `edgeone-deploy.tar.gz` 已创建
+- 前端项目已构建完成（`frontend/dist` 目录存在）
+- 部署包 `edgeone-deploy.tar.gz` 已创建
+- Git仓库已更新到最新版本
 
-### 2. 环境变量配置
+### 2. Git仓库信息
+- **仓库地址**: https://github.com/Jason-sui-1120/convenience-store-system.git
+- **主分支**: main
+- **最新提交**: 包含EdgeOne部署配置和Supabase集成
+
+### 3. 环境变量配置
 确保以下环境变量已正确配置：
 ```
 VITE_DEPLOYMENT_TYPE=edgeone
 VITE_EDGEONE_API_URL=https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com
+VITE_SUPABASE_URL=https://nxogjfzasogjzbkpfwle.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 VITE_APP_NAME=库存管理系统
 VITE_ENABLE_MOCK=false
 ```
 
-## 部署步骤
+## 🚀 EdgeOne控制台部署步骤
 
-### 第一步：登录腾讯云控制台
+### 方式一：Git仓库部署（推荐）
 
-1. 访问 [腾讯云EdgeOne控制台](https://console.cloud.tencent.com/edgeone)
-2. 使用您的腾讯云账号登录
-3. 如果是首次使用EdgeOne，需要开通服务
+#### 1. 登录腾讯云控制台
+- 访问 [腾讯云EdgeOne控制台](https://console.cloud.tencent.com/edgeone)
+- 使用您的腾讯云账号登录
 
-### 第二步：创建或选择站点
+#### 2. 创建或选择项目
+- 如果已有项目 `convenience-store-system`，直接选择
+- 如果没有，点击"创建项目"，输入项目名称
 
-#### 如果没有站点：
-1. 点击「添加站点」
-2. 输入您的域名（如：`example.com`）
-3. 选择「免费版」套餐
-4. 完成域名验证（如果使用自己的域名）
+#### 3. 创建Pages服务
+- 在项目中点击"Pages"
+- 点击"创建Pages"
+- 选择"Git仓库"方式
 
-#### 如果已有站点：
-1. 在站点列表中选择要使用的站点
-2. 进入站点管理页面
+#### 4. 连接Git仓库
+- 选择"GitHub"作为代码源
+- 授权访问GitHub账号
+- 选择仓库：`Jason-sui-1120/convenience-store-system`
+- 选择分支：`main`
 
-### 第三步：创建Pages项目
+#### 5. 配置构建设置
+```
+构建命令: cd frontend && npm install && cp .env.edgeone .env && npm run build
+输出目录: frontend/dist
+Node.js版本: 18.x
+```
 
-1. 在左侧菜单中选择「Pages」
-2. 点击「创建项目」按钮
-3. 填写项目信息：
-   - **项目名称**: `convenience-store-frontend`
-   - **描述**: `便利店进销存系统前端`
+### 方式二：文件上传部署
 
-### 第四步：配置部署方式
+#### 1-3. 同上述步骤1-3
 
-选择以下两种方式之一：
-
-#### 方式一：上传文件（推荐）
-1. 选择「上传文件」
-2. 上传 `edgeone-deploy.tar.gz` 文件
-3. 系统会自动解压并部署
-
-#### 方式二：Git仓库
-1. 选择「Git仓库」
-2. 连接您的GitHub/GitLab仓库
-3. 选择分支和构建目录
-
-### 第五步：配置构建设置
-
-如果选择Git仓库方式，需要配置：
-- **构建命令**: `cd frontend && npm install && npm run build`
-- **输出目录**: `frontend/dist`
-- **Node.js版本**: `18.x`
+#### 4. 上传部署包
+- 选择"上传文件"方式
+- 上传 `edgeone-deploy.tar.gz` 文件
+- 系统会自动解压并部署
+- 等待部署完成（通常需要1-3分钟）
 
 ### 第六步：配置环境变量
 
