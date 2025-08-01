@@ -12,6 +12,12 @@ const routes = [
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
         meta: { title: '首页', icon: 'House' }
+      },
+      {
+        path: 'debug',
+        name: 'Debug',
+        component: () => import('@/views/dashboard/debug.vue'),
+        meta: { title: '调试页面', icon: 'Setting' }
       }
     ]
   },
@@ -70,6 +76,16 @@ const routes = [
         meta: { title: '统计报表', icon: 'DataAnalysis' }
       }
     ]
+  },
+  {
+    path: '/404',
+    name: '404',
+    component: () => import('@/views/404.vue'),
+    meta: { title: '404' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/404'
   }
 ]
 

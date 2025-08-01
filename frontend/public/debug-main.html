@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主应用调试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>主应用调试页面</h1>
+        
+        <div class="test-section">
+            <h3>1. 环境变量检查</h3>
+            <div id="env-status" class="status info">检查中...</div>
+            <pre id="env-details"></pre>
+        </div>
+
+        <div class="test-section">
+            <h3>2. API配置检查</h3>
+            <div id="api-config-status" class="status info">检查中...</div>
+            <pre id="api-config-details"></pre>
+        </div>
+
+        <div class="test-section">
+            <h3>3. API连接测试</h3>
+            <div id="api-test-status" class="status info">检查中...</div>
+            <pre id="api-test-details"></pre>
+            <button onclick="testAllAPIs()">重新测试所有API</button>
+        </div>
+
+        <div class="test-section">
+            <h3>4. 控制台错误检查</h3>
+            <div id="console-status" class="status info">监听中...</div>
+            <pre id="console-details"></pre>
+            <button onclick="clearConsoleLog()">清空日志</button>
+        </div>
+
+        <div class="test-section">
+            <h3>5. 主应用访问</h3>
+            <button onclick="openMainApp()">打开主应用</button>
+            <button onclick="openDashboard()">直接访问仪表板</button>
+        </div>
+    </div>
+
+    <script>
+        let consoleLog = [];
+        
+        // 拦截控制台输出
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn
+        };
+        
+        console.log = function(...args) {
+            consoleLog.push({type: 'log', message: args.join(' '), time: new Date().toLocaleTimeString()});
+            updateConsoleDisplay();
+            originalConsole.log.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            consoleLog.push({type: 'error', message: args.join(' '), time: new Date().toLocaleTimeString()});
+            updateConsoleDisplay();
+            originalConsole.error.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            consoleLog.push({type: 'warn', message: args.join(' '), time: new Date().toLocaleTimeString()});
+            updateConsoleDisplay();
+            originalConsole.warn.apply(console, args);
+        };
+
+        function updateConsoleDisplay() {
+            const details = document.getElementById('console-details');
+            const status = document.getElementById('console-status');
+            
+            if (consoleLog.length === 0) {
+                details.textContent = '暂无控制台输出';
+                status.textContent = '正常';
+                status.className = 'status success';
+            } else {
+                const hasErrors = consoleLog.some(log => log.type === 'error');
+                details.textContent = consoleLog.map(log => 
+                    `[${log.time}] ${log.type.toUpperCase()}: ${log.message}`
+                ).join('\n');
+                
+                if (hasErrors) {
+                    status.textContent = '发现错误';
+                    status.className = 'status error';
+                } else {
+                    status.textContent = '有输出但无错误';
+                    status.className = 'status info';
+                }
+            }
+        }
+
+        function clearConsoleLog() {
+            consoleLog = [];
+            updateConsoleDisplay();
+        }
+
+        // 检查环境变量
+        function checkEnvironment() {
+            const envDetails = document.getElementById('env-details');
+            const envStatus = document.getElementById('env-status');
+            
+            // 由于这是静态HTML页面，无法直接访问Vite环境变量
+            // 我们通过检查页面是否能正常加载来判断
+            envDetails.textContent = '静态HTML页面无法直接访问Vite环境变量\n请检查主应用是否能正常加载';
+            envStatus.textContent = '需要在主应用中检查';
+            envStatus.className = 'status info';
+        }
+
+        // 检查API配置
+        async function checkAPIConfig() {
+            const configDetails = document.getElementById('api-config-details');
+            const configStatus = document.getElementById('api-config-status');
+            
+            // 直接使用已知的API地址进行测试
+            const config = {
+                API_BASE_URL: 'https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com/api',
+                note: '使用硬编码的腾讯云函数地址进行测试'
+            };
+            
+            configDetails.textContent = JSON.stringify(config, null, 2);
+            configStatus.textContent = '使用硬编码配置';
+            configStatus.className = 'status info';
+        }
+
+        // 测试所有API
+        async function testAllAPIs() {
+            const testDetails = document.getElementById('api-test-details');
+            const testStatus = document.getElementById('api-test-status');
+            
+            testStatus.textContent = '测试中...';
+            testStatus.className = 'status info';
+            testDetails.textContent = '正在测试API连接...';
+            
+            const API_BASE_URL = 'https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com/api';
+            
+            const tests = [
+                { name: '健康检查', url: `${API_BASE_URL}/health` },
+                { name: '报表统计', url: `${API_BASE_URL}/reports/summary` },
+                { name: '供应商列表', url: `${API_BASE_URL}/suppliers` },
+                { name: '入库记录', url: `${API_BASE_URL}/inbound` },
+                { name: '出库记录', url: `${API_BASE_URL}/outbound` }
+            ];
+            
+            const results = [];
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url);
+                    const data = await response.json();
+                    results.push({
+                        name: test.name,
+                        status: response.ok ? '成功' : '失败',
+                        code: response.status,
+                        success: data.success,
+                        dataLength: Array.isArray(data.data) ? data.data.length : 'N/A'
+                    });
+                } catch (error) {
+                    results.push({
+                        name: test.name,
+                        status: '错误',
+                        error: error.message
+                    });
+                }
+            }
+            
+            testDetails.textContent = results.map(result => 
+                `${result.name}: ${result.status} (${result.code || 'N/A'}) - Success: ${result.success} - Data: ${result.dataLength}${result.error ? ' - Error: ' + result.error : ''}`
+            ).join('\n');
+            
+            const allSuccess = results.every(r => r.status === '成功' && r.success);
+            testStatus.textContent = allSuccess ? '所有API测试通过' : '部分API测试失败';
+            testStatus.className = allSuccess ? 'status success' : 'status error';
+        }
+
+        function openMainApp() {
+            window.open('/', '_blank');
+        }
+
+        function openDashboard() {
+            window.open('/dashboard', '_blank');
+        }
+
+        // 页面加载时执行检查
+        window.addEventListener('load', () => {
+            checkEnvironment();
+            checkAPIConfig();
+            testAllAPIs();
+        });
+    </script>
+</body>
+</html>

@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const Inbound = require('../models/Inbound');
-const Product = require('../models/Product');
+const Inbound = require('../models/SupabaseInbound');
+const Product = require('../models/SupabaseProduct');
 
 // 获取入库记录列表
 router.get('/', async (req, res) => {
   try {
+    console.log('收到入库记录列表请求:', req.query);
+    
     const { 
       page = 1, 
       limit = 10, 
@@ -18,46 +20,100 @@ router.get('/', async (req, res) => {
       supplier
     } = req.query;
     
-    const query = {};
+    // 获取所有入库记录
+    const allRecords = await Inbound.find();
+    console.log('获取到入库记录数量:', allRecords.length);
+    
+    // 在应用层进行筛选
+    let filteredInbounds = allRecords;
     
     // 状态筛选
     if (status) {
-      query.status = status;
+      filteredInbounds = filteredInbounds.filter(inbound => inbound.status === status);
     }
     
     // 日期范围筛选
     if (startDate || endDate) {
-      query.inboundDate = {};
-      if (startDate) {
-        query.inboundDate.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.inboundDate.$lte = new Date(endDate);
-      }
+      filteredInbounds = filteredInbounds.filter(inbound => {
+        const inboundDate = new Date(inbound.inboundDate);
+        if (startDate && inboundDate < new Date(startDate)) return false;
+        if (endDate && inboundDate > new Date(endDate)) return false;
+        return true;
+      });
     }
     
     // 商品筛选
     if (product) {
-      query.product = product;
+      filteredInbounds = filteredInbounds.filter(inbound => inbound.product === product);
     }
     
     // 供应商筛选
     if (supplier) {
-      query.supplier = supplier;
+      filteredInbounds = filteredInbounds.filter(inbound => inbound.supplier === supplier);
     }
     
-    const inbounds = await Inbound.find(query)
-      .populate('product', 'name brand category specification')
-      .populate('supplier', 'name contact')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    // 搜索筛选
+    if (search) {
+      filteredInbounds = filteredInbounds.filter(inbound => 
+        inbound.notes?.toLowerCase().includes(search.toLowerCase()) ||
+        inbound.batchNumber?.toLowerCase().includes(search.toLowerCase())
+      );
+    }
     
-    const total = await Inbound.countDocuments(query);
+    // 排序（按创建时间倒序）
+    filteredInbounds.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    // 分页
+    const total = filteredInbounds.length;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedInbounds = filteredInbounds.slice(startIndex, endIndex);
+    
+    // 获取关联的产品信息并格式化数据
+    const enrichedInbounds = paginatedInbounds.map(inbound => {
+      // 从关联查询结果获取商品和供应商信息
+      const productInfo = inbound.products;
+      const supplierInfo = inbound.suppliers;
+      
+      return {
+        id: inbound.id,
+        productId: inbound.product_id,
+        supplierId: inbound.supplier_id,
+        quantity: inbound.quantity,
+        unitPrice: inbound.unit_price,
+        totalAmount: inbound.total_amount,
+        inboundDate: inbound.date,
+        notes: inbound.notes,
+        createdAt: inbound.created_at,
+        updatedAt: inbound.updated_at,
+        // 商品信息 - 修复这里
+        product: productInfo ? {
+          id: productInfo.id,
+          name: productInfo.name,
+          brand: productInfo.brand,
+          category: productInfo.category,
+          specification: productInfo.specification,
+          unit: productInfo.unit
+        } : null,
+        // 供应商信息
+        supplier: supplierInfo ? {
+          id: supplierInfo.id,
+          name: supplierInfo.name,
+          contact: supplierInfo.contact
+        } : null,
+        // 兼容前端的字段名
+        productName: productInfo?.name,
+        productBrand: productInfo?.brand,
+        productSpecification: productInfo?.specification,
+        unit: productInfo?.unit,
+        supplierName: supplierInfo?.name,
+        operator: 'system'
+      };
+    });
     
     res.json({
       success: true,
-      data: inbounds,
+      data: enrichedInbounds,
       pagination: {
         current: parseInt(page),
         pageSize: parseInt(limit),
@@ -66,6 +122,7 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('获取入库记录列表失败:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -73,16 +130,30 @@ router.get('/', async (req, res) => {
 // 获取单个入库记录
 router.get('/:id', async (req, res) => {
   try {
-    const inbound = await Inbound.findById(req.params.id)
-      .populate('product', 'name brand category specification')
-      .populate('supplier', 'name contact');
+    console.log('获取单个入库记录:', req.params.id);
     
+    const inbound = await Inbound.findById(req.params.id);
     if (!inbound) {
       return res.status(404).json({ success: false, message: '入库记录不存在' });
     }
     
-    res.json({ success: true, data: inbound });
+    // 获取关联的产品信息
+    const product = await Product.findById(inbound.product);
+    const enrichedInbound = {
+      ...inbound,
+      product: product ? {
+        id: product.id,
+        name: product.name,
+        brand: product.brand,
+        category: product.category,
+        specification: product.specification,
+        unit: product.unit
+      } : null
+    };
+    
+    res.json({ success: true, data: enrichedInbound });
   } catch (error) {
+    console.error('获取单个入库记录失败:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -111,28 +182,32 @@ router.post('/', [
       return res.status(400).json({ success: false, message: '商品不存在' });
     }
 
-    const inbound = new Inbound({
-      ...req.body,
-      createdBy: req.user?.username || 'system'
-    });
+    // 使用 Supabase 模型创建入库记录
+    const inboundData = {
+      product_id: req.body.product,
+      supplier_id: req.body.supplier,
+      quantity: req.body.quantity,
+      unit_price: req.body.unitPrice,
+      date: req.body.inboundDate,
+      notes: req.body.notes || ''
+    };
 
-    await inbound.save();
+    const newInbound = await Inbound.create(inboundData);
 
     // 更新商品库存
-    product.currentStock = (product.currentStock || 0) + req.body.quantity;
-    await product.save();
-
-    // 返回完整的入库记录（包含关联数据）
-    const populatedInbound = await Inbound.findById(inbound._id)
-      .populate('product', 'name brand category specification')
-      .populate('supplier', 'name contact');
+    const currentProduct = await Product.findById(req.body.product);
+    if (currentProduct) {
+      const newStock = (currentProduct.stock || 0) + req.body.quantity;
+      await Product.findByIdAndUpdate(req.body.product, { stock: newStock });
+    }
 
     res.status(201).json({ 
       success: true, 
-      data: populatedInbound, 
+      data: newInbound, 
       message: '入库记录创建成功' 
     });
   } catch (error) {
+    console.error('创建入库记录失败:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -163,7 +238,7 @@ router.put('/:id', [
       const product = await Product.findById(inbound.product);
       if (product) {
         const quantityDiff = req.body.quantity - inbound.quantity;
-        product.currentStock = (product.currentStock || 0) + quantityDiff;
+        product.stock = (product.stock || 0) + quantityDiff;
         await product.save();
       }
     }
@@ -175,7 +250,7 @@ router.put('/:id', [
     await inbound.save();
 
     const populatedInbound = await Inbound.findById(inbound._id)
-      .populate('product', 'name brand category specification')
+      .populate('product', 'name brand category specification unit')
       .populate('supplier', 'name contact');
 
     res.json({ success: true, data: populatedInbound, message: '入库记录更新成功' });
@@ -195,7 +270,7 @@ router.delete('/:id', async (req, res) => {
     // 更新商品库存（减去入库数量）
     const product = await Product.findById(inbound.product);
     if (product) {
-      product.currentStock = Math.max(0, (product.currentStock || 0) - inbound.quantity);
+      product.stock = Math.max(0, (product.stock || 0) - inbound.quantity);
       await product.save();
     }
 

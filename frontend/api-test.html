@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API连接测试</h1>
+        
+        <button onclick="testDirectApi()">测试直接API调用</button>
+        <button onclick="testVueApi()">测试Vue风格API调用</button>
+        <button onclick="clearResults()">清除结果</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com/api';
+        
+        function addResult(title, data, isError = false) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<strong>${title}</strong>\n${JSON.stringify(data, null, 2)}`;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testDirectApi() {
+            try {
+                addResult('开始测试', { message: '正在测试直接API调用...' });
+                
+                const response = await fetch(`${API_BASE_URL}/reports/summary`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                addResult('直接API调用成功', data);
+                
+                // 测试供应商API
+                const suppliersResponse = await fetch(`${API_BASE_URL}/suppliers`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (suppliersResponse.ok) {
+                    const suppliersData = await suppliersResponse.json();
+                    addResult('供应商API调用成功', suppliersData);
+                } else {
+                    addResult('供应商API调用失败', { 
+                        status: suppliersResponse.status, 
+                        statusText: suppliersResponse.statusText 
+                    }, true);
+                }
+
+            } catch (error) {
+                addResult('直接API调用失败', { error: error.message }, true);
+            }
+        }
+
+        async function testVueApi() {
+            try {
+                addResult('开始测试', { message: '正在测试Vue风格API调用...' });
+                
+                // 模拟Vue的HTTP客户端
+                class HttpClient {
+                    constructor(baseURL) {
+                        this.baseURL = baseURL;
+                    }
+
+                    async get(endpoint) {
+                        const url = this.baseURL + endpoint;
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
+                        return response.json();
+                    }
+                }
+
+                const http = new HttpClient(API_BASE_URL);
+                
+                // 模拟仪表板数据加载
+                const stats = {
+                    totalProducts: 0,
+                    totalSuppliers: 0,
+                    lowStockProducts: 0,
+                    outOfStockProducts: 0
+                };
+
+                // 获取统计数据
+                const statsResponse = await http.get('/reports/summary');
+                addResult('统计数据响应', statsResponse);
+                
+                if (statsResponse.success) {
+                    stats.totalProducts = statsResponse.data.totalProducts || 0;
+                    stats.lowStockProducts = statsResponse.data.lowStockProducts || 0;
+                }
+
+                // 获取供应商数据
+                try {
+                    const suppliersResponse = await http.get('/suppliers');
+                    addResult('供应商数据响应', suppliersResponse);
+                    
+                    if (suppliersResponse.success) {
+                        stats.totalSuppliers = suppliersResponse.data.length || 0;
+                    }
+                } catch (error) {
+                    addResult('供应商数据获取失败', { error: error.message }, true);
+                }
+
+                addResult('最终统计数据', stats);
+
+            } catch (error) {
+                addResult('Vue风格API调用失败', { error: error.message }, true);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -114,7 +114,10 @@ const activeMenu = computed(() => route.path)
 // 菜单路由（过滤掉不需要显示的路由）
 const menuRoutes = computed(() => {
   return router.getRoutes().filter(route => 
-    route.meta?.title && route.path !== '/404'
+    route.meta?.title && route.path !== '/404' && route.path !== '/'
+  ).concat(
+    // 手动添加根路由的子路由
+    router.getRoutes().find(route => route.path === '/')?.children?.filter(child => child.meta?.title) || []
   )
 })
 

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最终API连接测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover { background: #0056b3; }
+        .log-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 最终API连接测试</h1>
+    
+    <div class="container">
+        <h2>📊 测试结果总览</h2>
+        <div id="overall-status" class="status info">正在初始化测试...</div>
+        <div class="grid">
+            <div>
+                <h3>API配置状态</h3>
+                <div id="api-config-status" class="status warning">检测中...</div>
+                <div>基础URL: <span id="base-url">-</span></div>
+            </div>
+            <div>
+                <h3>连接测试</h3>
+                <div id="connection-status" class="status warning">检测中...</div>
+                <button class="test-button" onclick="testConnection()">重新测试连接</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 API端点测试</h2>
+        <div class="grid">
+            <div>
+                <h3>报表统计API</h3>
+                <button class="test-button" onclick="testReportsAPI()">测试报表API</button>
+                <div id="reports-status" class="status info">等待测试</div>
+            </div>
+            <div>
+                <h3>供应商API</h3>
+                <button class="test-button" onclick="testSuppliersAPI()">测试供应商API</button>
+                <div id="suppliers-status" class="status info">等待测试</div>
+            </div>
+            <div>
+                <h3>商品API</h3>
+                <button class="test-button" onclick="testProductsAPI()">测试商品API</button>
+                <div id="products-status" class="status info">等待测试</div>
+            </div>
+            <div>
+                <h3>入库API</h3>
+                <button class="test-button" onclick="testInboundAPI()">测试入库API</button>
+                <div id="inbound-status" class="status info">等待测试</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📝 详细日志</h2>
+        <button class="test-button" onclick="clearLogs()">清空日志</button>
+        <button class="test-button" onclick="runAllTests()">运行所有测试</button>
+        <div id="test-logs" class="log-area">等待测试开始...\n</div>
+    </div>
+
+    <script>
+        // 模拟环境变量
+        const env = {
+            DEV: true,
+            PROD: false,
+            VITE_DEPLOYMENT_TYPE: 'local',
+            VITE_DEV_API_URL: 'https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com',
+            VITE_EDGEONE_API_URL: 'https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com',
+            VITE_API_URL: 'https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com'
+        };
+
+        // API配置逻辑（与实际应用保持一致）
+        function getAPIBaseURL() {
+            const isDevelopment = env.DEV ?? true;
+            const isProduction = env.PROD ?? false;
+            const DEPLOYMENT_TYPE = env.VITE_DEPLOYMENT_TYPE || 'edgeone';
+
+            if (isDevelopment) {
+                const devApiUrl = env.VITE_DEV_API_URL || env.VITE_EDGEONE_API_URL;
+                if (devApiUrl) {
+                    return devApiUrl + '/api';
+                }
+                return '/api';
+            }
+
+            if (isProduction) {
+                switch (DEPLOYMENT_TYPE) {
+                    case 'edgeone':
+                        return (env.VITE_EDGEONE_API_URL || 'https://your-domain.edgeone.app') + '/api';
+                    case 'render':
+                        return (env.VITE_API_URL || window.location.origin) + '/api';
+                    case 'tencent':
+                        return (env.VITE_TENCENT_API_URL || 'https://your-server-ip') + '/api';
+                    default:
+                        return (env.VITE_API_URL || window.location.origin) + '/api';
+                }
+            }
+
+            return (env.VITE_EDGEONE_API_URL || 'https://1371559131-hunc74y9qz.ap-guangzhou.tencentscf.com') + '/api';
+        }
+
+        const API_BASE_URL = getAPIBaseURL();
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logArea = document.getElementById('test-logs');
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            logArea.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function updateStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+        }
+
+        async function testConnection() {
+            log('开始测试API连接...', 'info');
+            updateStatus('connection-status', '测试中...', 'warning');
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/reports/summary', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`API连接成功！状态码: ${response.status}`, 'success');
+                    log(`响应数据: ${JSON.stringify(data, null, 2)}`, 'info');
+                    updateStatus('connection-status', '连接正常', 'success');
+                    return true;
+                } else {
+                    log(`API连接失败！状态码: ${response.status}`, 'error');
+                    updateStatus('connection-status', `连接失败 (${response.status})`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                log(`API连接错误: ${error.message}`, 'error');
+                updateStatus('connection-status', '连接错误', 'error');
+                return false;
+            }
+        }
+
+        async function testAPI(endpoint, statusElementId, name) {
+            log(`测试${name}API: ${endpoint}`, 'info');
+            
+            try {
+                const response = await fetch(API_BASE_URL + endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`${name}API测试成功！`, 'success');
+                    updateStatus(statusElementId, '测试通过', 'success');
+                    return true;
+                } else {
+                    log(`${name}API测试失败！状态码: ${response.status}`, 'error');
+                    updateStatus(statusElementId, `失败 (${response.status})`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                log(`${name}API测试错误: ${error.message}`, 'error');
+                updateStatus(statusElementId, '测试错误', 'error');
+                return false;
+            }
+        }
+
+        async function testReportsAPI() {
+            return await testAPI('/reports/summary', 'reports-status', '报表统计');
+        }
+
+        async function testSuppliersAPI() {
+            return await testAPI('/suppliers', 'suppliers-status', '供应商');
+        }
+
+        async function testProductsAPI() {
+            return await testAPI('/products', 'products-status', '商品');
+        }
+
+        async function testInboundAPI() {
+            return await testAPI('/inbound', 'inbound-status', '入库');
+        }
+
+        async function runAllTests() {
+            log('开始运行所有API测试...', 'info');
+            
+            const results = await Promise.all([
+                testConnection(),
+                testReportsAPI(),
+                testSuppliersAPI(),
+                testProductsAPI(),
+                testInboundAPI()
+            ]);
+
+            const successCount = results.filter(r => r).length;
+            const totalCount = results.length;
+
+            if (successCount === totalCount) {
+                log(`所有测试完成！成功: ${successCount}/${totalCount}`, 'success');
+                updateStatus('overall-status', '所有API测试通过！', 'success');
+            } else {
+                log(`测试完成！成功: ${successCount}/${totalCount}`, 'warning');
+                updateStatus('overall-status', `部分API测试失败 (${successCount}/${totalCount})`, 'warning');
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('test-logs').textContent = '';
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('base-url').textContent = API_BASE_URL;
+            updateStatus('api-config-status', 'API配置已加载', 'success');
+            
+            log('API测试页面已加载', 'info');
+            log(`当前API基础URL: ${API_BASE_URL}`, 'info');
+            log('点击"运行所有测试"开始测试', 'info');
+            
+            // 自动运行连接测试
+            setTimeout(testConnection, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const Outbound = require('../models/Outbound');
-const Product = require('../models/Product');
+const Outbound = require('../models/SupabaseOutbound');
+const Product = require('../models/SupabaseProduct');
 
 // 获取出库记录列表
 router.get('/', async (req, res) => {
   try {
+    console.log('收到出库记录列表请求:', req.query);
+    
     const { 
       page = 1, 
       limit = 10, 
@@ -18,50 +20,95 @@ router.get('/', async (req, res) => {
       product
     } = req.query;
     
-    const query = {};
+    // 获取所有出库记录
+    const allRecords = await Outbound.find();
+    console.log('获取到出库记录数量:', allRecords.length);
+    
+    // 在应用层进行筛选
+    let filteredOutbounds = allRecords;
     
     // 状态筛选
     if (status) {
-      query.status = status;
+      filteredOutbounds = filteredOutbounds.filter(outbound => outbound.status === status);
     }
     
     // 出库类型筛选
     if (outboundType) {
-      query.outboundType = outboundType;
+      filteredOutbounds = filteredOutbounds.filter(outbound => outbound.outboundType === outboundType);
     }
     
     // 日期范围筛选
     if (startDate || endDate) {
-      query.outboundDate = {};
-      if (startDate) {
-        query.outboundDate.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.outboundDate.$lte = new Date(endDate);
-      }
+      filteredOutbounds = filteredOutbounds.filter(outbound => {
+        const outboundDate = new Date(outbound.outboundDate);
+        if (startDate && outboundDate < new Date(startDate)) return false;
+        if (endDate && outboundDate > new Date(endDate)) return false;
+        return true;
+      });
     }
     
     // 商品筛选
     if (product) {
-      query.product = product;
+      filteredOutbounds = filteredOutbounds.filter(outbound => outbound.product === product);
     }
     
     // 搜索条件（客户名称）
     if (search) {
-      query.customer = { $regex: search, $options: 'i' };
+      filteredOutbounds = filteredOutbounds.filter(outbound => 
+        outbound.customer?.toLowerCase().includes(search.toLowerCase()) ||
+        outbound.notes?.toLowerCase().includes(search.toLowerCase())
+      );
     }
     
-    const outbounds = await Outbound.find(query)
-      .populate('product', 'name brand category specification')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    // 排序（按创建时间倒序）
+    filteredOutbounds.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
-    const total = await Outbound.countDocuments(query);
+    // 分页
+    const total = filteredOutbounds.length;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedOutbounds = filteredOutbounds.slice(startIndex, endIndex);
+    
+    // 获取关联的产品信息并格式化数据
+    const enrichedOutbounds = paginatedOutbounds.map(outbound => {
+      // 从关联查询结果获取商品信息
+      const productInfo = outbound.products;
+      
+      return {
+        id: outbound.id,
+        productId: outbound.product_id,
+        quantity: outbound.quantity,
+        unitPrice: outbound.unit_price,
+        totalAmount: outbound.total_amount,
+        outboundDate: outbound.date,
+        outboundType: outbound.outbound_type || 'sale',
+        customerName: outbound.customer_name,
+        notes: outbound.notes,
+        createdAt: outbound.created_at,
+        updatedAt: outbound.updated_at,
+        status: outbound.status,
+        // 商品信息
+        product: productInfo ? {
+          id: productInfo.id,
+          name: productInfo.name,
+          brand: productInfo.brand,
+          category: productInfo.category,
+          specification: productInfo.specification,
+          unit: productInfo.unit
+        } : null,
+        // 兼容前端的字段名
+        productName: productInfo?.name,
+        productBrand: productInfo?.brand,
+        productSpecification: productInfo?.specification,
+        unit: productInfo?.unit,
+        createdBy: 'system',
+        remark: outbound.notes
+      };
+    });
     
     res.json({
       success: true,
-      data: outbounds,
+      data: enrichedOutbounds,
       pagination: {
         current: parseInt(page),
         pageSize: parseInt(limit),
@@ -70,6 +117,7 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('获取出库记录列表失败:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -77,15 +125,30 @@ router.get('/', async (req, res) => {
 // 获取单个出库记录
 router.get('/:id', async (req, res) => {
   try {
-    const outbound = await Outbound.findById(req.params.id)
-      .populate('product', 'name brand category specification');
+    console.log('获取单个出库记录:', req.params.id);
     
+    const outbound = await Outbound.findById(req.params.id);
     if (!outbound) {
       return res.status(404).json({ success: false, message: '出库记录不存在' });
     }
     
-    res.json({ success: true, data: outbound });
+    // 获取关联的产品信息
+    const product = await Product.findById(outbound.product);
+    const enrichedOutbound = {
+      ...outbound,
+      product: product ? {
+        id: product.id,
+        name: product.name,
+        brand: product.brand,
+        category: product.category,
+        specification: product.specification,
+        unit: product.unit
+      } : null
+    };
+    
+    res.json({ success: true, data: enrichedOutbound });
   } catch (error) {
+    console.error('获取单个出库记录失败:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -115,10 +178,10 @@ router.post('/', [
     }
 
     // 检查库存是否充足
-    if (product.currentStock < req.body.quantity) {
+    if (product.stock < req.body.quantity) {
       return res.status(400).json({ 
         success: false, 
-        message: `库存不足，当前库存：${product.currentStock}，需要出库：${req.body.quantity}` 
+        message: `库存不足，当前库存：${product.stock}，需要出库：${req.body.quantity}` 
       });
     }
 
@@ -130,12 +193,12 @@ router.post('/', [
     await outbound.save();
 
     // 更新商品库存
-    product.currentStock = product.currentStock - req.body.quantity;
+    product.stock = product.stock - req.body.quantity;
     await product.save();
 
     // 返回完整的出库记录（包含关联数据）
     const populatedOutbound = await Outbound.findById(outbound._id)
-      .populate('product', 'name brand category specification');
+      .populate('product', 'name brand category specification unit');
 
     res.status(201).json({ 
       success: true, 
@@ -174,16 +237,16 @@ router.put('/:id', [
       const product = await Product.findById(outbound.product);
       if (product) {
         const quantityDiff = req.body.quantity - outbound.quantity;
-        const newStock = product.currentStock - quantityDiff;
+        const newStock = product.stock - quantityDiff;
         
         if (newStock < 0) {
           return res.status(400).json({ 
             success: false, 
-            message: `库存不足，当前库存：${product.currentStock}，调整后需要：${quantityDiff}` 
+            message: `库存不足，当前库存：${product.stock}，调整后需要：${quantityDiff}` 
           });
         }
         
-        product.currentStock = newStock;
+        product.stock = newStock;
         await product.save();
       }
     }
@@ -195,7 +258,7 @@ router.put('/:id', [
     await outbound.save();
 
     const populatedOutbound = await Outbound.findById(outbound._id)
-      .populate('product', 'name brand category specification');
+      .populate('product', 'name brand category specification unit');
 
     res.json({ success: true, data: populatedOutbound, message: '出库记录更新成功' });
   } catch (error) {
@@ -214,7 +277,7 @@ router.delete('/:id', async (req, res) => {
     // 更新商品库存（恢复出库数量）
     const product = await Product.findById(outbound.product);
     if (product) {
-      product.currentStock = (product.currentStock || 0) + outbound.quantity;
+      product.stock = (product.stock || 0) + outbound.quantity;
       await product.save();
     }
 

@@ -156,8 +156,19 @@ import {
   GridComponent
 } from 'echarts/components'
 import VChart from 'vue-echarts'
-import http from '@/config/http'
-import { API_ENDPOINTS } from '@/config/api'
+import {
+  Goods,
+  User,
+  Warning,
+  CircleClose,
+  Plus,
+  Download,
+  Upload
+} from '@element-plus/icons-vue'
+import SupabaseProductService from '@/utils/supabase.js'
+import supabaseSupplierService from '@/utils/supabaseSupplier.js'
+import supabaseInboundService from '@/utils/supabaseInbound.js'
+import supabaseOutboundService from '@/utils/supabaseOutbound.js'
 
 use([
   CanvasRenderer,
@@ -202,7 +213,7 @@ const categoryChartOption = computed(() => ({
       radius: '50%',
       data: categoryStats.value.map(item => ({
         value: item.count,
-        name: item._id
+        name: item.id
       })),
       emphasis: {
         itemStyle: {
@@ -231,7 +242,7 @@ const brandChartOption = computed(() => ({
   },
   xAxis: {
     type: 'category',
-    data: brandStats.value.map(item => item._id)
+    data: brandStats.value.map(item => item.id)
   },
   yAxis: {
     type: 'value'
@@ -251,44 +262,77 @@ const brandChartOption = computed(() => ({
 // 加载统计数据
 const loadStats = async () => {
   try {
-    // 获取统计数据
-    const statsResponse = await http.get(API_ENDPOINTS.REPORTS.STATS)
-    if (statsResponse.data.success) {
-      stats.value = {
-        totalProducts: statsResponse.data.data.totalProducts || 0,
-        totalSuppliers: statsResponse.data.data.totalSuppliers || 0,
-        lowStockProducts: statsResponse.data.data.lowStockProducts || 0,
-        outOfStockProducts: statsResponse.data.data.outOfStockProducts || 0
-      }
-    }
+    console.log('开始加载dashboard数据...')
     
-    // 获取分类统计
-    const categoryResponse = await http.get(API_ENDPOINTS.REPORTS.CATEGORY_STATS)
-    if (categoryResponse.data.success) {
-      categoryStats.value = categoryResponse.data.data || []
-    }
+    // 并行加载所有数据以提高性能
+    const [
+      productsResult,
+      suppliersResult,
+      categoryStatsData,
+      brandStatsData,
+      inboundResult,
+      outboundResult
+    ] = await Promise.all([
+      SupabaseProductService.getProducts({ limit: 1000 }),
+      supabaseSupplierService.getSuppliers({ limit: 1000 }),
+      SupabaseProductService.getCategoryStats(),
+      SupabaseProductService.getBrandStats(),
+      supabaseInboundService.getInboundRecords({ limit: 5, page: 1 }),
+      supabaseOutboundService.getOutboundRecords({ limit: 5, page: 1 })
+    ])
     
-    // 获取品牌统计
-    const brandResponse = await http.get(API_ENDPOINTS.REPORTS.BRAND_STATS)
-    if (brandResponse.data.success) {
-      brandStats.value = brandResponse.data.data || []
-    }
-    
-    // 获取最近入库记录
-    const inboundResponse = await http.get(API_ENDPOINTS.INBOUND.LIST, { 
-      params: { page: 1, limit: 5 } 
+    console.log('Supabase响应:', {
+      products: productsResult,
+      suppliers: suppliersResult,
+      category: categoryStatsData,
+      brand: brandStatsData,
+      inbound: inboundResult,
+      outbound: outboundResult
     })
-    if (inboundResponse.data.success) {
-      recentInbound.value = inboundResponse.data.data.records || []
-    }
     
-    // 获取最近出库记录
-    const outboundResponse = await http.get(API_ENDPOINTS.OUTBOUND.LIST, { 
-      params: { page: 1, limit: 5 } 
-    })
-    if (outboundResponse.data.success) {
-      recentOutbound.value = outboundResponse.data.data.records || []
+    // 计算统计数据
+    const products = productsResult.success ? productsResult.data : []
+    const suppliers = suppliersResult.success ? suppliersResult.data : []
+    
+    const lowStockProducts = products.filter(p => p.currentStock <= (p.stockAlert || 10)).length
+    const outOfStockProducts = products.filter(p => p.currentStock === 0).length
+    
+    // 设置统计数据
+    stats.value = {
+      totalProducts: products.length,
+      totalSuppliers: suppliers.length,
+      lowStockProducts,
+      outOfStockProducts
     }
+    console.log('统计数据加载成功:', stats.value)
+    
+    // 设置分类统计数据
+    categoryStats.value = categoryStatsData.success ? categoryStatsData.data : []
+    console.log('分类统计数据加载成功:', categoryStats.value)
+    
+    // 设置品牌统计数据
+    brandStats.value = brandStatsData.success ? brandStatsData.data : []
+    console.log('品牌统计数据加载成功:', brandStats.value)
+    
+    // 设置入库记录
+    const inboundData = inboundResult.success ? inboundResult.data : []
+    recentInbound.value = inboundData.map(item => ({
+      productName: item.product?.name || '未知商品',
+      quantity: item.quantity || 0,
+      createdAt: new Date(item.createdAt).toLocaleDateString()
+    }))
+    console.log('入库记录加载成功:', recentInbound.value)
+    
+    // 设置出库记录
+    const outboundData = outboundResult.success ? outboundResult.data : []
+    recentOutbound.value = outboundData.map(item => ({
+      productName: item.product?.name || '未知商品',
+      quantity: item.quantity || 0,
+      createdAt: new Date(item.createdAt).toLocaleDateString()
+    }))
+    console.log('出库记录加载成功:', recentOutbound.value)
+    
+    console.log('所有dashboard数据加载完成')
   } catch (error) {
     console.error('加载统计数据失败:', error)
     // 如果API调用失败，使用默认数据

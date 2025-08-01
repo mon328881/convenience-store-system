@@ -44,19 +44,19 @@
         stripe
         style="width: 100%"
       >
-        <el-table-column prop="productName" label="商品名称" width="150" />
-        <el-table-column prop="brand" label="品牌" width="100" />
-        <el-table-column prop="specification" label="规格" width="100" />
+        <el-table-column prop="product.name" label="商品名称" width="150" />
+        <el-table-column prop="product.brand" label="品牌" width="100" />
+        <el-table-column prop="product.specification" label="规格" width="120" />
         <el-table-column prop="quantity" label="出库数量" width="100" />
-        <el-table-column prop="unit" label="单位" width="60" />
-        <el-table-column prop="retailPrice" label="零售单价" width="100">
+        <el-table-column prop="product.unit" label="单位" width="60" />
+        <el-table-column prop="unitPrice" label="零售单价" width="100">
           <template #default="scope">
-            ¥{{ scope.row.retailPrice.toFixed(2) }}
+            ¥{{ (scope.row.unitPrice || 0).toFixed(2) }}
           </template>
         </el-table-column>
         <el-table-column prop="totalAmount" label="总金额" width="100">
           <template #default="scope">
-            ¥{{ scope.row.totalAmount.toFixed(2) }}
+            ¥{{ (scope.row.totalAmount || 0).toFixed(2) }}
           </template>
         </el-table-column>
         <el-table-column prop="outboundType" label="出库类型" width="100">
@@ -71,8 +71,8 @@
             {{ formatDate(scope.row.outboundDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="operator" label="操作员" width="100" />
-        <el-table-column prop="notes" label="备注" min-width="120" />
+        <el-table-column prop="createdBy" label="操作员" width="100" />
+        <el-table-column prop="remark" label="备注" min-width="120" />
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="scope">
             <el-button size="small" @click="viewDetail(scope.row)">查看</el-button>
@@ -118,9 +118,9 @@
               >
                 <el-option
                   v-for="product in productOptions"
-                  :key="product._id"
+                  :key="product.id"
                   :label="`${product.name} - ${product.brand} (库存: ${product.currentStock})`"
-                  :value="product._id"
+                  :value="product.id"
                 />
               </el-select>
             </el-form-item>
@@ -156,9 +156,9 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="零售单价" prop="retailPrice">
+            <el-form-item label="零售单价" prop="unitPrice">
               <el-input-number
-                v-model="outboundForm.retailPrice"
+                v-model="outboundForm.unitPrice"
                 :precision="2"
                 :step="0.1"
                 :min="0"
@@ -193,7 +193,7 @@
         </el-row>
         <el-form-item label="备注">
           <el-input
-            v-model="outboundForm.notes"
+            v-model="outboundForm.remark"
             type="textarea"
             :rows="3"
             placeholder="请输入备注信息"
@@ -215,20 +215,20 @@
       width="600px"
     >
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="商品名称">{{ detailData.productName }}</el-descriptions-item>
-        <el-descriptions-item label="品牌">{{ detailData.brand }}</el-descriptions-item>
-        <el-descriptions-item label="规格">{{ detailData.specification }}</el-descriptions-item>
-        <el-descriptions-item label="出库数量">{{ detailData.quantity }} {{ detailData.unit }}</el-descriptions-item>
-        <el-descriptions-item label="零售单价">¥{{ detailData.retailPrice?.toFixed(2) }}</el-descriptions-item>
-        <el-descriptions-item label="总金额">¥{{ detailData.totalAmount?.toFixed(2) }}</el-descriptions-item>
+        <el-descriptions-item label="商品名称">{{ detailData.product?.name }}</el-descriptions-item>
+        <el-descriptions-item label="品牌">{{ detailData.product?.brand }}</el-descriptions-item>
+        <el-descriptions-item label="规格">{{ detailData.product?.specification }}</el-descriptions-item>
+        <el-descriptions-item label="出库数量">{{ detailData.quantity }} {{ detailData.product?.unit }}</el-descriptions-item>
+        <el-descriptions-item label="零售单价">¥{{ (detailData.unitPrice || 0).toFixed(2) }}</el-descriptions-item>
+        <el-descriptions-item label="总金额">¥{{ (detailData.totalAmount || 0).toFixed(2) }}</el-descriptions-item>
         <el-descriptions-item label="出库类型">
           <el-tag :type="getOutboundTypeTag(detailData.outboundType)">
             {{ getOutboundTypeText(detailData.outboundType) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="出库日期">{{ formatDate(detailData.outboundDate) }}</el-descriptions-item>
-        <el-descriptions-item label="操作员">{{ detailData.operator }}</el-descriptions-item>
-        <el-descriptions-item label="备注" :span="2">{{ detailData.notes || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="操作员">{{ detailData.createdBy }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="2">{{ detailData.remark || '无' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
   </div>
@@ -236,8 +236,10 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Minus } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Plus, Edit, Delete, Refresh } from '@element-plus/icons-vue'
+import supabaseOutboundService from '@/utils/supabaseOutbound.js'
+import supabaseProductService from '@/utils/supabase.js'
 import { formatDate } from '@/utils/date'
 import http from '@/config/http'
 import { API_ENDPOINTS } from '@/config/api'
@@ -260,7 +262,8 @@ const searchForm = reactive({
 const pagination = reactive({
   page: 1,
   limit: 20,
-  total: 0
+  total: 0,
+  pages: 0
 })
 
 // 出库表单
@@ -268,9 +271,9 @@ const outboundForm = reactive({
   productId: '',
   outboundType: '',
   quantity: 1,
-  retailPrice: 0,
+  unitPrice: 0,
   outboundDate: new Date().toISOString().split('T')[0],
-  notes: ''
+  remark: ''
 })
 
 // 表单验证规则
@@ -282,10 +285,12 @@ const outboundRules = {
     { required: true, message: '请选择出库类型', trigger: 'change' }
   ],
   quantity: [
-    { required: true, message: '请输入出库数量', trigger: 'blur' }
+    { required: true, message: '请输入出库数量', trigger: 'blur' },
+    { type: 'number', min: 1, message: '数量必须大于0', trigger: 'blur', transform: (value) => Number(value) }
   ],
-  retailPrice: [
-    { required: true, message: '请输入零售单价', trigger: 'blur' }
+  unitPrice: [
+    { required: true, message: '请输入零售单价', trigger: 'blur' },
+    { type: 'number', min: 0, message: '单价不能为负数', trigger: 'blur', transform: (value) => Number(value) }
   ],
   outboundDate: [
     { required: true, message: '请选择出库日期', trigger: 'change' }
@@ -298,9 +303,13 @@ const productOptions = ref([])
 // 获取商品选项
 const getProductOptions = async () => {
   try {
-    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST)
+    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST, { 
+      params: { status: 'active', limit: 1000 } 
+    })
+    
     if (response.data.success) {
-      productOptions.value = response.data.data.records || []
+      // 商品数据直接在 data 中
+      productOptions.value = response.data.data || []
     }
   } catch (error) {
     console.error('获取商品选项失败:', error)
@@ -309,12 +318,12 @@ const getProductOptions = async () => {
 
 // 选中的商品
 const selectedProduct = computed(() => {
-  return productOptions.value.find(p => p._id === outboundForm.productId)
+  return productOptions.value.find(p => p.id === outboundForm.productId)
 })
 
 // 计算总金额
 const totalAmount = computed(() => {
-  return outboundForm.quantity * outboundForm.retailPrice
+  return outboundForm.quantity * outboundForm.unitPrice
 })
 
 // 获取出库类型标签
@@ -343,23 +352,21 @@ const getOutboundTypeText = (type) => {
 const getOutboundRecords = async () => {
   loading.value = true
   try {
-    const params = {
+    const filters = {
       page: pagination.page,
       limit: pagination.limit,
       ...searchForm
     }
     
-    const response = await http.get(API_ENDPOINTS.OUTBOUND.LIST, { params })
-    
-    if (response.data.success) {
-      outboundRecords.value = response.data.data.records || []
-      pagination.total = response.data.data.total || 0
-    } else {
-      ElMessage.error(response.data.message || '获取出库记录失败')
+    const result = await supabaseOutboundService.getOutboundRecords(filters)
+    if (result.success) {
+      outboundRecords.value = result.data
+      pagination.total = result.pagination.total
+      pagination.pages = result.pagination.pages
     }
   } catch (error) {
     console.error('获取出库记录失败:', error)
-    ElMessage.error('获取出库记录失败')
+    ElMessage.error('获取出库记录失败: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -367,9 +374,9 @@ const getOutboundRecords = async () => {
 
 // 商品选择变化
 const onProductChange = (productId) => {
-  const product = productOptions.value.find(p => p._id === productId)
+  const product = productOptions.value.find(p => p.id === productId)
   if (product) {
-    outboundForm.retailPrice = product.retailPrice
+    outboundForm.unitPrice = product.retailPrice || 0
   }
 }
 
@@ -380,6 +387,7 @@ const calculateTotal = () => {
 
 // 搜索
 const handleSearch = () => {
+  pagination.page = 1
   getOutboundRecords()
 }
 
@@ -389,12 +397,14 @@ const resetSearch = () => {
     productName: '',
     dateRange: []
   })
+  pagination.page = 1
   getOutboundRecords()
 }
 
 // 分页处理
 const handleSizeChange = (val) => {
   pagination.limit = val
+  pagination.page = 1
   getOutboundRecords()
 }
 
@@ -417,28 +427,27 @@ const saveOutbound = async () => {
     }
     
     const outboundData = {
-      product: outboundForm.productId,
+      productId: outboundForm.productId,
       outboundType: outboundForm.outboundType,
       quantity: outboundForm.quantity,
-      unitPrice: outboundForm.retailPrice, // 字段映射
+      unitPrice: outboundForm.unitPrice,
       outboundDate: outboundForm.outboundDate,
-      remark: outboundForm.notes, // 字段映射
-      createdBy: 'system' // 添加必填字段
+      remark: outboundForm.remark
     }
     
-    const response = await http.post(API_ENDPOINTS.OUTBOUND.CREATE, outboundData)
+    const result = await supabaseOutboundService.createOutboundRecord(outboundData)
     
-    if (response.data.success) {
+    if (result.success) {
       ElMessage.success('出库成功')
       showAddDialog.value = false
       resetForm()
       getOutboundRecords()
     } else {
-      ElMessage.error(response.data.message || '出库失败')
+      ElMessage.error(result.message || '出库失败')
     }
   } catch (error) {
     console.error('出库失败:', error)
-    ElMessage.error('出库失败')
+    ElMessage.error('出库失败: ' + error.message)
   }
 }
 
@@ -454,9 +463,9 @@ const resetForm = () => {
     productId: '',
     outboundType: '',
     quantity: 1,
-    retailPrice: 0,
+    unitPrice: 0,
     outboundDate: new Date().toISOString().split('T')[0],
-    notes: ''
+    remark: ''
   })
   if (outboundFormRef.value) {
     outboundFormRef.value.clearValidate()

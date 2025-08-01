@@ -62,17 +62,17 @@
         <el-table-column prop="specification" label="规格" width="100" />
         <el-table-column prop="purchasePrice" label="采购价" width="80">
           <template #default="scope">
-            ¥{{ scope.row.purchasePrice.toFixed(2) }}
+            ¥{{ (scope.row.purchasePrice || 0).toFixed(2) }}
           </template>
         </el-table-column>
         <el-table-column prop="inputPrice" label="录入单价" width="80">
           <template #default="scope">
-            ¥{{ scope.row.inputPrice.toFixed(2) }}
+            ¥{{ (scope.row.inputPrice || 0).toFixed(2) }}
           </template>
         </el-table-column>
         <el-table-column prop="retailPrice" label="零售价" width="80">
           <template #default="scope">
-            ¥{{ scope.row.retailPrice.toFixed(2) }}
+            ¥{{ (scope.row.retailPrice || 0).toFixed(2) }}
           </template>
         </el-table-column>
         <el-table-column prop="currentStock" label="当前库存" width="80">
@@ -100,12 +100,12 @@
           <template #default="scope">
             <el-button size="small" @click="editProduct(scope.row)">编辑</el-button>
             <el-button
-              size="small"
-              type="danger"
-              @click="deleteProduct(scope.row._id)"
-            >
-              删除
-            </el-button>
+                    size="small"
+                    type="danger"
+                    @click="deleteProduct(scope.row)"
+                  >
+                    删除
+                  </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -265,8 +265,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import http from '@/config/http'
-import { API_ENDPOINTS } from '@/config/api'
+import SupabaseProductService from '@/utils/supabase'
 import { formatDate } from '@/utils/date'
 
 // 响应式数据
@@ -338,23 +337,20 @@ const productRules = {
 const getProducts = async () => {
   loading.value = true
   try {
-    const params = {
+    const filters = {
       page: pagination.page,
       limit: pagination.limit,
       ...searchForm
     }
     
-    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST, { params })
+    const result = await SupabaseProductService.getProducts(filters)
     
-    if (response.data.success) {
-      products.value = response.data.data.products || []
-      pagination.total = response.data.data.total || 0
-    } else {
-      ElMessage.error(response.data.message || '获取商品列表失败')
-    }
+    products.value = result.data || []
+    pagination.total = result.pagination?.total || 0
+    
   } catch (error) {
     console.error('获取商品列表失败:', error)
-    ElMessage.error('获取商品列表失败')
+    ElMessage.error('获取商品列表失败: ' + error.message)
   } finally {
     loading.value = false
   }
@@ -411,8 +407,7 @@ const saveProduct = async () => {
       retailPrice: Number(productForm.retailPrice),
       stockAlert: Number(productForm.stockAlert),
       unit: productForm.unit,
-      status: productForm.status,
-      createdBy: 'system' // 添加必填字段
+      status: productForm.status
     }
     
     // 只有当条形码不为空时才添加到数据中
@@ -422,68 +417,59 @@ const saveProduct = async () => {
     
     console.log('发送的商品数据:', productData)
     
-    let response
+    let result
     if (editingProduct.value) {
       // 更新商品
-      productData.updatedBy = 'system' // 更新时添加updatedBy字段
-      response = await http.put(API_ENDPOINTS.PRODUCTS.UPDATE(editingProduct.value._id), productData)
+      result = await SupabaseProductService.updateProduct(editingProduct.value.id, productData)
     } else {
       // 创建商品
-      response = await http.post(API_ENDPOINTS.PRODUCTS.CREATE, productData)
+      result = await SupabaseProductService.createProduct(productData)
     }
     
-    console.log('服务器响应:', response.data)
+    console.log('Supabase响应:', result)
     
-    if (response.data.success) {
-      ElMessage.success(response.data.message || (editingProduct.value ? '商品更新成功' : '商品添加成功'))
-      showAddDialog.value = false
-      resetForm()
-      // 如果是新增商品，重置到第一页
-      if (!editingProduct.value) {
-        pagination.page = 1
-      }
-      getProducts()
-    } else {
-      console.error('保存失败，服务器返回:', response.data)
-      ElMessage.error(response.data.message || '保存失败')
+    ElMessage.success(editingProduct.value ? '商品更新成功' : '商品添加成功')
+    showAddDialog.value = false
+    resetForm()
+    // 如果是新增商品，重置到第一页
+    if (!editingProduct.value) {
+      pagination.page = 1
     }
+    getProducts()
+    
   } catch (error) {
     console.error('保存商品失败，完整错误信息:', error)
-    if (error.response) {
-      console.error('错误响应数据:', error.response.data)
-      console.error('错误状态码:', error.response.status)
-      ElMessage.error(error.response.data.message || `服务器错误 (${error.response.status})`)
-    } else if (error.request) {
-      console.error('请求错误:', error.request)
-      ElMessage.error('网络请求失败，请检查网络连接')
-    } else {
-      console.error('其他错误:', error.message)
-      ElMessage.error('保存商品失败: ' + error.message)
-    }
+    ElMessage.error('保存商品失败: ' + error.message)
   }
 }
 
 // 删除商品
-const deleteProduct = async (id) => {
+const deleteProduct = async (product) => {
   try {
-    await ElMessageBox.confirm('确定要删除这个商品吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      `确定要删除商品 "${product.name}" 吗？`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
     
-    const response = await http.delete(API_ENDPOINTS.PRODUCTS.DELETE(id))
+    await SupabaseProductService.deleteProduct(product.id)
     
-    if (response.data.success) {
-      ElMessage.success(response.data.message || '删除成功')
-      getProducts()
-    } else {
-      ElMessage.error(response.data.message || '删除失败')
+    ElMessage.success('商品删除成功')
+    
+    // 如果当前页没有数据了，回到上一页
+    if (products.value.length === 1 && pagination.page > 1) {
+      pagination.page--
     }
+    
+    getProducts()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除商品失败:', error)
-      ElMessage.error('删除失败')
+      ElMessage.error('删除商品失败: ' + error.message)
     }
   }
 }

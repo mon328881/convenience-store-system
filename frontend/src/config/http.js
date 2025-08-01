@@ -29,6 +29,7 @@ http.interceptors.request.use(
 // 响应拦截器
 http.interceptors.response.use(
   (response) => {
+    // 保持完整的响应格式，让组件处理success字段
     return response
   },
   (error) => {

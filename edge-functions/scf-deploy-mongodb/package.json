@@ -1,0 +1,12 @@
+{
+  "name": "inventory-management-mongodb",
+  "version": "1.0.0",
+  "description": "便利店进销存系统 - MongoDB版本",
+  "main": "index.js",
+  "dependencies": {
+    "mongoose": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

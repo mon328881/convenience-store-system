@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const Product = require('../models/Product');
+const Product = require('../models/SupabaseProduct');
 
 // 获取商品列表
 router.get('/', async (req, res) => {
   try {
+    console.log('商品列表API - 收到请求，查询参数:', req.query);
+    
     const { 
       page = 1, 
       limit = 10, 
@@ -13,113 +15,129 @@ router.get('/', async (req, res) => {
       category, 
       brand, 
       status,
-      lowStock 
+      lowStock,
+      name // 添加name参数支持
     } = req.query;
     
-    const query = {};
+    // 构建Supabase查询过滤条件
+    const filters = {};
     
-    // 搜索条件
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { brand: { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } }
-      ];
+      filters.search = search;
     }
     
-    // 分类筛选
+    if (name) {
+      filters.search = name; // 将name参数映射到search
+    }
+    
     if (category) {
-      query.category = category;
+      filters.category = category;
     }
     
-    // 品牌筛选
     if (brand) {
-      query.brand = brand;
+      filters.brand = brand;
     }
     
-    // 状态筛选
     if (status) {
-      query.status = status;
+      filters.status = status;
     }
     
-    // 低库存筛选
+    console.log('商品列表API - 构建的过滤条件:', filters);
+    
+    // 获取所有匹配的产品
+    console.log('商品列表API - 开始查询商品...');
+    const allProducts = await Product.find(filters);
+    console.log('商品列表API - 查询完成，商品数量:', allProducts.length);
+    
+    // 如果需要低库存筛选，在应用层处理
+    let filteredProducts = allProducts;
     if (lowStock === 'true') {
-      query.$expr = {
-        $and: [
-          { $ne: ['$stockAlert', null] },
-          { $lte: ['$currentStock', '$stockAlert'] }
-        ]
-      };
+      console.log('商品列表API - 应用低库存筛选...');
+      filteredProducts = allProducts.filter(product => 
+        product.stock <= (product.stock_alert || 0)
+      );
+      console.log('商品列表API - 低库存筛选后商品数量:', filteredProducts.length);
     }
     
-    const products = await Product.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    // 计算分页
+    const total = filteredProducts.length;
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
     
-    const total = await Product.countDocuments(query);
+    console.log('商品列表API - 分页信息:', {
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      startIndex,
+      endIndex,
+      paginatedCount: paginatedProducts.length
+    });
     
-    res.json({
+    const response = {
       success: true,
-      data: {
-        products: products,
-        total: total
-      },
+      data: paginatedProducts, // 直接返回商品数组，与前端期望的格式一致
       pagination: {
         current: parseInt(page),
         pageSize: parseInt(limit),
         total,
         pages: Math.ceil(total / limit)
       }
-    });
+    };
+    
+    console.log('商品列表API - 准备返回响应，数据条数:', paginatedProducts.length);
+    res.json(response);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('获取商品列表失败:', error);
+    console.error('错误详情:', error.stack);
+    res.status(500).json({ success: false, message: `查询商品失败: ${error.message}` });
   }
 });
 
 // 获取商品统计信息
 router.get('/stats', async (req, res) => {
   try {
-    const totalProducts = await Product.countDocuments({ status: 'active' });
-    const lowStockProducts = await Product.countDocuments({
-      status: 'active',
-      $expr: {
-        $and: [
-          { $ne: ['$stockAlert', null] },
-          { $lte: ['$currentStock', '$stockAlert'] }
-        ]
+    // 使用Supabase模型的统计方法
+    const stats = await Product.getStats();
+    
+    // 获取分类和品牌统计（简化版本）
+    const allProducts = await Product.find({ status: 'active' });
+    
+    // 计算分类统计
+    const categoryStats = {};
+    const brandStats = {};
+    
+    allProducts.forEach(product => {
+      // 分类统计
+      if (product.category) {
+        categoryStats[product.category] = (categoryStats[product.category] || 0) + 1;
+      }
+      
+      // 品牌统计
+      if (product.brand) {
+        brandStats[product.brand] = (brandStats[product.brand] || 0) + 1;
       }
     });
-    const outOfStockProducts = await Product.countDocuments({
-      status: 'active',
-      currentStock: 0
-    });
     
-    // 按分类统计
-    const categoryStats = await Product.aggregate([
-      { $match: { status: 'active' } },
-      { $group: { _id: '$category', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
+    // 转换为数组格式
+    const categoryStatsArray = Object.entries(categoryStats).map(([name, count]) => ({ name, count }));
+    const brandStatsArray = Object.entries(brandStats).map(([name, count]) => ({ name, count }));
     
-    // 按品牌统计
-    const brandStats = await Product.aggregate([
-      { $match: { status: 'active' } },
-      { $group: { _id: '$brand', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]);
+    // 计算缺货商品数量
+    const outOfStockProducts = allProducts.filter(product => product.stock === 0).length;
     
     res.json({
       success: true,
       data: {
-        totalProducts,
-        lowStockProducts,
-        outOfStockProducts,
-        categoryStats,
-        brandStats
+        totalProducts: stats.totalProducts || 0,
+        lowStockProducts: stats.lowStockCount || 0,
+        outOfStockProducts: outOfStockProducts,
+        categoryStats: categoryStatsArray,
+        brandStats: brandStatsArray
       }
     });
   } catch (error) {
+    console.error('获取商品统计失败:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -145,7 +163,7 @@ router.post('/', [
   body('purchasePrice').isFloat({ min: 0 }).withMessage('采购价必须为非负数'),
   body('retailPrice').isFloat({ min: 0 }).withMessage('零售价必须为非负数'),
   body('inputPrice').isFloat({ min: 0 }).withMessage('录入单价必须为非负数'),
-  body('specification').notEmpty().withMessage('规格不能为空')
+  // body('specification').notEmpty().withMessage('规格不能为空') // 字段不存在，暂时注释
 ], async (req, res) => {
   try {
     console.log('收到创建商品请求:', req.body);
@@ -161,22 +179,23 @@ router.post('/', [
     }
 
     // 检查商品名称+品牌是否已存在
-    const existingProduct = await Product.findOne({ 
-      name: req.body.name,
-      brand: req.body.brand
-    });
+    const existingProducts = await Product.find({ status: 'active' });
+    const existingProduct = existingProducts.find(p => 
+      p.name === req.body.name && p.brand === req.body.brand
+    );
+    
     if (existingProduct) {
       console.log('商品已存在:', existingProduct);
       return res.status(400).json({ success: false, message: '该品牌下的商品名称已存在' });
     }
 
-    const product = new Product({
+    const productData = {
       ...req.body,
-      createdBy: req.user?.username || 'system'
-    });
+      created_by: req.user?.username || 'system'
+    };
 
-    console.log('准备保存商品:', product);
-    const savedProduct = await product.save();
+    console.log('准备保存商品:', productData);
+    const savedProduct = await Product.create(productData);
     console.log('商品保存成功:', savedProduct);
     
     res.status(201).json({ success: true, data: savedProduct, message: '商品创建成功' });
@@ -196,8 +215,11 @@ router.put('/:id', [
   body('inputPrice').optional().isFloat({ min: 0 }).withMessage('录入单价必须为非负数')
 ], async (req, res) => {
   try {
+    console.log('收到更新商品请求:', req.params.id, req.body);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('数据验证失败:', errors.array());
       return res.status(400).json({ 
         success: false, 
         message: '数据验证失败',
@@ -207,29 +229,38 @@ router.put('/:id', [
 
     const product = await Product.findById(req.params.id);
     if (!product) {
+      console.log('商品不存在:', req.params.id);
       return res.status(404).json({ success: false, message: '商品不存在' });
     }
 
     // 如果更新名称或品牌，检查是否与其他商品重复
     if ((req.body.name && req.body.name !== product.name) || 
         (req.body.brand && req.body.brand !== product.brand)) {
-      const existingProduct = await Product.findOne({ 
-        name: req.body.name || product.name,
-        brand: req.body.brand || product.brand,
-        _id: { $ne: req.params.id } 
-      });
+      const allProducts = await Product.find({ status: 'active' });
+      const existingProduct = allProducts.find(p => 
+        p.name === (req.body.name || product.name) &&
+        p.brand === (req.body.brand || product.brand) &&
+        p.id !== req.params.id
+      );
+      
       if (existingProduct) {
+        console.log('商品名称已存在:', existingProduct);
         return res.status(400).json({ success: false, message: '该品牌下的商品名称已存在' });
       }
     }
 
-    Object.assign(product, req.body, {
-      updatedBy: req.user?.username || 'system'
-    });
+    const updateData = {
+      ...req.body,
+      updated_by: req.user?.username || 'system'
+    };
 
-    await product.save();
-    res.json({ success: true, data: product, message: '商品更新成功' });
+    console.log('准备更新商品:', updateData);
+    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updateData);
+    console.log('商品更新成功:', updatedProduct);
+    
+    res.json({ success: true, data: updatedProduct, message: '商品更新成功' });
   } catch (error) {
+    console.error('更新商品失败:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -271,7 +302,7 @@ router.patch('/batch-alert', [
         item.id, 
         { 
           stockAlert: item.stockAlert,
-          updatedBy: req.user?.username || 'system'
+          updated_by: req.user?.username || 'system'
         },
         { new: true }
       )

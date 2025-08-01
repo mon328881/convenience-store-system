@@ -2,7 +2,7 @@
   <div class="suppliers-container">
     <div class="page-header">
       <h2>供应商管理</h2>
-      <el-button type="primary" @click="showAddDialog = true">
+      <el-button type="primary" @click="addSupplier">
         <el-icon><Plus /></el-icon>
         添加供应商
       </el-button>
@@ -13,14 +13,19 @@
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="供应商名称">
           <el-input
-            v-model="searchForm.name"
+            v-model="searchForm.keyword"
             placeholder="请输入供应商名称"
             clearable
             @keyup.enter="handleSearch"
           />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
+          <el-select 
+            v-model="searchForm.status" 
+            placeholder="请选择状态" 
+            clearable
+            style="width: 120px"
+          >
             <el-option label="启用" value="active" />
             <el-option label="禁用" value="inactive" />
           </el-select>
@@ -40,49 +45,54 @@
         stripe
         style="width: 100%"
       >
-        <el-table-column prop="name" label="供应商名称" width="150" />
+        <el-table-column type="selection" width="55" />
+        <el-table-column prop="name" label="供应商名称" min-width="120" />
         <el-table-column prop="contact" label="联系人" width="100" />
-        <el-table-column prop="phone" label="联系电话" width="130" />
-        <el-table-column prop="products" label="供货商品" width="200">
-          <template #default="scope">
-            <el-tag
-              v-for="product in scope.row.products.slice(0, 3)"
-              :key="product"
-              size="small"
-              style="margin-right: 5px;"
+        <el-table-column prop="phone" label="联系电话" width="120" />
+        <el-table-column prop="address" label="地址" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="products" label="供货商品" min-width="200">
+          <template #default="{ row }">
+            <!-- 修复：显示通过关系查询获取的商品 -->
+            <el-tag 
+              v-for="product in (row.relatedProducts || []).slice(0, 3)" 
+              :key="product.id" 
+              size="small" 
+              class="mr-1"
             >
-              {{ product }}
+              {{ product.name }}
             </el-tag>
-            <span v-if="scope.row.products.length > 3">...</span>
+            <el-tag v-if="(row.relatedProducts || []).length > 3" size="small" type="info">
+              +{{ (row.relatedProducts || []).length - 3 }}
+            </el-tag>
+            <!-- 如果没有关联商品，显示提示 -->
+            <span v-if="!(row.relatedProducts || []).length" class="text-gray-400">
+              暂无关联商品
+            </span>
           </template>
         </el-table-column>
-        <el-table-column prop="paymentMethod" label="付款方式" width="100" />
-        <el-table-column prop="needInvoice" label="是否开票" width="80">
-          <template #default="scope">
-            <el-tag :type="scope.row.needInvoice ? 'success' : 'info'">
-              {{ scope.row.needInvoice ? '是' : '否' }}
-            </el-tag>
-          </template>
-        </el-table-column>
+        <el-table-column prop="payment_method" label="付款方式" width="100" />
         <el-table-column prop="status" label="状态" width="80">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 'active' ? 'success' : 'danger'">
-              {{ scope.row.status === 'active' ? '启用' : '禁用' }}
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'active' ? 'success' : 'danger'">
+              {{ row.status === 'active' ? '启用' : '禁用' }}
             </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="150">
-          <template #default="scope">
-            {{ formatDate(scope.row.createdAt) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click="editSupplier(scope.row)">编辑</el-button>
-            <el-button
-              size="small"
-              type="danger"
-              @click="deleteSupplier(scope.row._id)"
+          <template #default="{ row }">
+            <el-button 
+              type="primary" 
+              size="small" 
+              :icon="Edit"
+              @click="editSupplier(row)"
+            >
+              编辑
+            </el-button>
+            <el-button 
+              type="danger" 
+              size="small" 
+              :icon="Delete"
+              @click="deleteSupplier(row)"
             >
               删除
             </el-button>
@@ -93,8 +103,8 @@
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.limit"
+          v-model:current-page="pagination.current"
+          v-model:page-size="pagination.pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :total="pagination.total"
           layout="total, sizes, prev, pager, next, jumper"
@@ -126,18 +136,17 @@
           <el-input v-model="supplierForm.phone" placeholder="请输入联系电话" />
         </el-form-item>
         <el-form-item label="供货商品" prop="products">
-          <el-select
-            v-model="supplierForm.products"
-            multiple
-            filterable
+          <el-select 
+            v-model="supplierForm.products" 
+            multiple 
             placeholder="请选择供货商品"
             style="width: 100%"
           >
             <el-option
-              v-for="option in productOptions"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
+              v-for="product in productOptions"
+              :key="product.value"
+              :label="product.label"
+              :value="product.value"
             />
           </el-select>
         </el-form-item>
@@ -186,31 +195,33 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
-import { formatDate } from '@/utils/date'
-import http from '@/config/http'
-import { API_ENDPOINTS } from '@/config/api'
+import { Search, Plus, Edit, Delete, Refresh } from '@element-plus/icons-vue'
+import supabaseSupplierService from '@/utils/supabaseSupplier.js'
+import supabaseProductService from '@/utils/supabase.js'
 
 // 响应式数据
 const loading = ref(false)
 const suppliers = ref([])
+const selectedSuppliers = ref([])
 const showAddDialog = ref(false)
 const editingSupplier = ref(null)
 const supplierFormRef = ref()
+const productOptions = ref([])
 
 // 搜索表单
 const searchForm = reactive({
-  name: '',
+  keyword: '',
   status: ''
 })
 
-// 分页
+// 分页数据
 const pagination = reactive({
-  page: 1,
-  limit: 20,
-  total: 0
+  current: 1,
+  pageSize: 10,
+  total: 0,
+  pages: 0
 })
 
 // 供应商表单
@@ -218,18 +229,19 @@ const supplierForm = reactive({
   name: '',
   contact: '',
   phone: '',
-  products: [],
+  address: '',
   paymentMethod: '',
   needInvoice: false,
-  address: '',
+  status: 'active',
   notes: '',
-  status: 'active'
+  products: [] // 重新添加商品字段，用于存储商品ID
 })
 
-// 表单验证规则
+// 表单验证规则，重新添加products字段验证
 const supplierRules = {
   name: [
-    { required: true, message: '请输入供应商名称', trigger: 'blur' }
+    { required: true, message: '请输入供应商名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
   ],
   contact: [
     { required: true, message: '请输入联系人', trigger: 'blur' }
@@ -238,191 +250,203 @@ const supplierRules = {
     { required: true, message: '请输入联系电话', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
   ],
-  products: [
-    { required: true, message: '请选择供货商品', trigger: 'change' }
-  ],
   paymentMethod: [
     { required: true, message: '请选择付款方式', trigger: 'change' }
+  ],
+  products: [
+    { required: true, message: '请选择供货商品', trigger: 'change' }
   ]
-}
-
-// 商品选项（从商品管理API获取）
-const productOptions = ref([])
-
-// 获取商品选项
-const getProductOptions = async () => {
-  try {
-    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST, {
-      params: { limit: 1000 } // 获取所有商品用于选择
-    })
-    if (response.data.success) {
-      // 将商品数据转换为选项格式，使用商品名称作为选项值
-      productOptions.value = response.data.data.products?.map(product => ({
-        label: `${product.name} (${product.brand})`,
-        value: product.name,
-        product: product
-      })) || []
-    } else {
-      ElMessage.error(response.data.message || '获取商品选项失败')
-    }
-  } catch (error) {
-      console.error('获取商品选项失败:', error)
-      ElMessage.error('获取商品选项失败')
-    }
 }
 
 // 获取供应商列表
 const getSuppliers = async () => {
   loading.value = true
   try {
-    const params = {
-      page: pagination.page,
-      limit: pagination.limit
-    }
+    const result = await supabaseSupplierService.getSuppliers({
+      keyword: searchForm.keyword,
+      status: searchForm.status,
+      page: pagination.current,
+      limit: pagination.pageSize
+    })
     
-    // 添加搜索条件
-    if (searchForm.name) {
-      params.search = searchForm.name
-    }
-    if (searchForm.status) {
-      params.status = searchForm.status
-    }
-    
-    const response = await http.get(API_ENDPOINTS.SUPPLIERS.LIST, { params })
-    
-    if (response.data.success) {
-      suppliers.value = response.data.data
-      pagination.total = response.data.pagination.total
-    } else {
-      ElMessage.error(response.data.message || '获取供应商列表失败')
+    if (result.success) {
+      suppliers.value = result.data
+      pagination.total = result.pagination?.total || 0
+      pagination.pages = result.pagination?.pages || 0
     }
   } catch (error) {
     console.error('获取供应商列表失败:', error)
-    ElMessage.error('获取供应商列表失败')
+    ElMessage.error(error.message || '获取供应商列表失败')
   } finally {
     loading.value = false
   }
 }
 
-// 搜索
-const handleSearch = () => {
-  getSuppliers()
-}
-
-// 重置搜索
-const resetSearch = () => {
-  Object.assign(searchForm, {
-    name: '',
-    status: ''
-  })
-  getSuppliers()
+// 获取商品选项（用于供应商表单中的商品选择）
+const getProductOptions = async () => {
+  try {
+    const result = await supabaseProductService.getProducts({ limit: 1000 })
+    productOptions.value = result.data.map(product => ({
+      label: product.name,
+      value: product.id // 使用商品ID作为值
+    }))
+  } catch (error) {
+    console.error('获取商品选项失败:', error)
+    // 如果获取失败，使用空数组
+    productOptions.value = []
+  }
 }
 
 // 分页处理
-const handleSizeChange = (val) => {
-  pagination.limit = val
+const handleSizeChange = (size) => {
+  pagination.pageSize = size
+  pagination.current = 1
   getSuppliers()
 }
 
-const handleCurrentChange = (val) => {
-  pagination.page = val
+const handleCurrentChange = (page) => {
+  pagination.current = page
   getSuppliers()
+}
+
+// 添加供应商
+const addSupplier = () => {
+  resetForm()
+  showAddDialog.value = true
 }
 
 // 编辑供应商
 const editSupplier = (supplier) => {
   editingSupplier.value = supplier
-  // 处理字段映射
+  
+  // 获取供应商关联的商品ID数组
+  const productIds = (supplier.relatedProducts || []).map(product => product.id)
+  
   Object.assign(supplierForm, {
     name: supplier.name,
     contact: supplier.contact,
     phone: supplier.phone,
-    products: supplier.products || [],
-    paymentMethod: supplier.paymentMethod,
-    needInvoice: supplier.hasInvoice || false, // 字段映射
     address: supplier.address || '',
-    notes: supplier.remark || '', // 字段映射
-    status: supplier.status
+    paymentMethod: supplier.payment_method || '',
+    needInvoice: supplier.need_invoice || false,
+    status: supplier.status,
+    notes: supplier.notes || '',
+    products: productIds // 设置关联的商品ID数组
   })
+  
   showAddDialog.value = true
 }
 
-// 保存供应商
+// 修改保存供应商函数，包含products字段
 const saveSupplier = async () => {
   if (!supplierFormRef.value) return
   
   try {
     await supplierFormRef.value.validate()
     
-    // 准备提交数据，处理字段映射
+    // 准备提交数据，包含products字段
     const submitData = {
       name: supplierForm.name,
       contact: supplierForm.contact,
       phone: supplierForm.phone,
-      products: supplierForm.products,
       paymentMethod: supplierForm.paymentMethod,
-      hasInvoice: supplierForm.needInvoice, // 字段映射
+      needInvoice: supplierForm.needInvoice,
       address: supplierForm.address,
-      remark: supplierForm.notes, // 字段映射
+      notes: supplierForm.notes,
       status: supplierForm.status,
-      createdBy: 'system' // 添加必填字段
+      products: supplierForm.products // 包含商品ID数组
     }
     
-    let response
+    let result
     if (editingSupplier.value) {
       // 更新供应商
-      submitData.updatedBy = 'system' // 更新时添加updatedBy字段
-      response = await http.put(API_ENDPOINTS.SUPPLIERS.UPDATE(editingSupplier.value._id), submitData)
+      result = await supabaseSupplierService.updateSupplier(editingSupplier.value.id, submitData)
     } else {
       // 创建供应商
-      response = await http.post(API_ENDPOINTS.SUPPLIERS.CREATE, submitData)
+      result = await supabaseSupplierService.createSupplier(submitData)
     }
     
-    if (response.data.success) {
-      ElMessage.success(response.data.message || (editingSupplier.value ? '供应商更新成功' : '供应商添加成功'))
-      showAddDialog.value = false
-      resetForm()
-      getSuppliers()
-    } else {
-      ElMessage.error(response.data.message || '操作失败')
-    }
+    ElMessage.success(result.message || (editingSupplier.value ? '供应商更新成功' : '供应商添加成功'))
+    showAddDialog.value = false
+    resetForm()
+    getSuppliers()
+    
   } catch (error) {
     console.error('保存供应商失败:', error)
-    if (error.response?.data?.message) {
-      ElMessage.error(error.response.data.message)
-    } else {
-      ElMessage.error('保存失败，请检查网络连接')
-    }
+    ElMessage.error(error.message || '操作失败')
   }
 }
 
 // 删除供应商
-const deleteSupplier = async (id) => {
+const deleteSupplier = async (supplier) => {
   try {
-    await ElMessageBox.confirm('确定要删除这个供应商吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      `确定要删除供应商 "${supplier.name}" 吗？`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
     
-    const response = await http.delete(API_ENDPOINTS.SUPPLIERS.DELETE(id))
+    const result = await supabaseSupplierService.deleteSupplier(supplier.id)
+    ElMessage.success(result.message || '删除成功')
+    getSuppliers()
     
-    if (response.data.success) {
-      ElMessage.success(response.data.message || '删除成功')
-      getSuppliers()
-    } else {
-      ElMessage.error(response.data.message || '删除失败')
-    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除供应商失败:', error)
-      if (error.response?.data?.message) {
-        ElMessage.error(error.response.data.message)
-      } else {
-        ElMessage.error('删除失败，请检查网络连接')
-      }
+      ElMessage.error(error.message || '删除失败')
     }
   }
+}
+
+// 批量删除供应商
+const batchDeleteSuppliers = async () => {
+  if (selectedSuppliers.value.length === 0) {
+    ElMessage.warning('请选择要删除的供应商')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedSuppliers.value.length} 个供应商吗？`,
+      '确认批量删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    const ids = selectedSuppliers.value.map(supplier => supplier.id)
+    const result = await supabaseSupplierService.deleteSuppliers(ids)
+    
+    ElMessage.success(result.message || '批量删除成功')
+    selectedSuppliers.value = []
+    getSuppliers()
+    
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除供应商失败:', error)
+      ElMessage.error(error.message || '批量删除失败')
+    }
+  }
+}
+
+// 搜索
+const handleSearch = () => {
+  pagination.current = 1
+  getSuppliers()
+}
+
+// 重置搜索
+const resetSearch = () => {
+  searchForm.keyword = ''
+  searchForm.status = ''
+  pagination.current = 1
+  getSuppliers()
 }
 
 // 重置表单
@@ -431,12 +455,12 @@ const resetForm = () => {
     name: '',
     contact: '',
     phone: '',
-    products: [],
+    address: '',
     paymentMethod: '',
     needInvoice: false,
-    address: '',
+    status: 'active',
     notes: '',
-    status: 'active'
+    products: [] // 重置商品字段为空数组
   })
   editingSupplier.value = null
   if (supplierFormRef.value) {
@@ -444,10 +468,10 @@ const resetForm = () => {
   }
 }
 
-// 组件挂载时获取数据
+// 生命周期 - 重新添加getProductOptions调用
 onMounted(() => {
   getSuppliers()
-  getProductOptions()
+  getProductOptions() // 重新添加获取商品选项
 })
 </script>
 

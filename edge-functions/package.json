@@ -1,0 +1,29 @@
+{
+  "name": "inventory-edge-functions",
+  "version": "1.0.0",
+  "description": "库存管理系统边缘函数",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "wrangler dev --local"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.17.1",
+    "hono": "^4.8.10",
+    "mongoose": "^8.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  },
+  "keywords": [
+    "edge-functions",
+    "hono",
+    "mongodb",
+    "inventory",
+    "tencent-cloud"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

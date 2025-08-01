@@ -44,32 +44,25 @@
         stripe
         style="width: 100%"
       >
-        <el-table-column prop="productName" label="商品名称" width="150" />
-        <el-table-column prop="brand" label="品牌" width="100" />
-        <el-table-column prop="specification" label="规格" width="100" />
-        <el-table-column prop="quantity" label="入库数量" width="100" />
-        <el-table-column prop="unit" label="单位" width="60" />
-        <el-table-column prop="purchasePrice" label="采购单价" width="100">
+        <el-table-column prop="product.name" label="商品名称" width="150" />
+        <el-table-column prop="product.brand" label="品牌" width="120" />
+        <el-table-column prop="product.specification" label="规格" width="100" />
+        <el-table-column prop="quantity" label="数量" width="80" />
+        <el-table-column prop="unitPrice" label="单价" width="100">
           <template #default="scope">
-            ¥{{ scope.row.purchasePrice.toFixed(2) }}
+            ¥{{ scope.row.unitPrice }}
           </template>
         </el-table-column>
-        <el-table-column prop="totalAmount" label="总金额" width="100">
+        <el-table-column prop="totalAmount" label="总金额" width="120">
           <template #default="scope">
-            ¥{{ scope.row.totalAmount.toFixed(2) }}
+            ¥{{ scope.row.totalAmount }}
           </template>
         </el-table-column>
-        <el-table-column prop="supplierName" label="供应商" width="120" />
-        <el-table-column prop="inboundDate" label="入库日期" width="120">
+        <el-table-column prop="inboundDate" label="入库日期" width="120" />
+        <el-table-column prop="supplier.name" label="供应商" width="120" />
+        <el-table-column label="操作" width="120" fixed="right">
           <template #default="scope">
-            {{ formatDate(scope.row.inboundDate) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="operator" label="操作员" width="100" />
-        <el-table-column prop="notes" label="备注" min-width="120" />
-        <el-table-column label="操作" width="100" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click="viewDetail(scope.row)">查看</el-button>
+            <el-button type="primary" size="small" @click="viewDetail(scope.row)">查看</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -112,9 +105,9 @@
               >
                 <el-option
                   v-for="product in productOptions"
-                  :key="product._id"
-                  :label="`${product.name} - ${product.brand} (${product.specification})`"
-                  :value="product._id"
+                  :key="product.id"
+                  :label="`${product.name} - ${product.brand} ${product.specification ? '(' + product.specification + ')' : ''}`"
+                  :value="product.id"
                 />
               </el-select>
             </el-form-item>
@@ -125,12 +118,13 @@
                 v-model="inboundForm.supplierId"
                 placeholder="请选择供应商"
                 style="width: 100%"
+                @change="onSupplierChange"
               >
                 <el-option
                   v-for="supplier in supplierOptions"
-                  :key="supplier._id"
+                  :key="supplier.id"
                   :label="supplier.name"
-                  :value="supplier._id"
+                  :value="supplier.id"
                 />
               </el-select>
             </el-form-item>
@@ -207,15 +201,15 @@
       width="600px"
     >
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="商品名称">{{ detailData.productName }}</el-descriptions-item>
-        <el-descriptions-item label="品牌">{{ detailData.brand }}</el-descriptions-item>
-        <el-descriptions-item label="规格">{{ detailData.specification }}</el-descriptions-item>
-        <el-descriptions-item label="入库数量">{{ detailData.quantity }} {{ detailData.unit }}</el-descriptions-item>
-        <el-descriptions-item label="采购单价">¥{{ detailData.purchasePrice?.toFixed(2) }}</el-descriptions-item>
-        <el-descriptions-item label="总金额">¥{{ detailData.totalAmount?.toFixed(2) }}</el-descriptions-item>
-        <el-descriptions-item label="供应商">{{ detailData.supplierName }}</el-descriptions-item>
-        <el-descriptions-item label="入库日期">{{ formatDate(detailData.inboundDate) }}</el-descriptions-item>
-        <el-descriptions-item label="操作员">{{ detailData.operator }}</el-descriptions-item>
+        <el-descriptions-item label="商品名称">{{ detailData.product?.name || '未知商品' }}</el-descriptions-item>
+        <el-descriptions-item label="品牌">{{ detailData.product?.brand || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="规格">{{ detailData.product?.specification || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="入库数量">{{ detailData.quantity }} 件</el-descriptions-item>
+        <el-descriptions-item label="采购单价">¥{{ detailData.unit_price?.toFixed(2) || '0.00' }}</el-descriptions-item>
+        <el-descriptions-item label="总金额">¥{{ detailData.total_amount?.toFixed(2) || '0.00' }}</el-descriptions-item>
+        <el-descriptions-item label="供应商">{{ detailData.supplier?.name || '未知供应商' }}</el-descriptions-item>
+        <el-descriptions-item label="入库日期">{{ detailData.date || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="操作员">{{ detailData.created_by || '系统' }}</el-descriptions-item>
         <el-descriptions-item label="备注" :span="2">{{ detailData.notes || '无' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
@@ -224,11 +218,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Plus, Edit, Delete, Refresh } from '@element-plus/icons-vue'
+import supabaseInboundService from '@/utils/supabaseInbound.js'
+import supabaseProductService from '@/utils/supabase.js'
+import supabaseSupplierService from '@/utils/supabaseSupplier.js'
 import { formatDate } from '@/utils/date'
-import http from '@/config/http'
-import { API_ENDPOINTS } from '@/config/api'
 
 // 响应式数据
 const loading = ref(false)
@@ -248,7 +243,8 @@ const searchForm = reactive({
 const pagination = reactive({
   page: 1,
   limit: 20,
-  total: 0
+  total: 0,
+  pages: 0
 })
 
 // 入库表单
@@ -270,10 +266,12 @@ const inboundRules = {
     { required: true, message: '请选择供应商', trigger: 'change' }
   ],
   quantity: [
-    { required: true, message: '请输入入库数量', trigger: 'blur' }
+    { required: true, message: '请输入入库数量', trigger: 'blur' },
+    { type: 'number', min: 1, message: '数量必须大于0', trigger: 'blur', transform: (value) => Number(value) }
   ],
   purchasePrice: [
-    { required: true, message: '请输入采购单价', trigger: 'blur' }
+    { required: true, message: '请输入采购单价', trigger: 'blur' },
+    { type: 'number', min: 0, message: '单价不能为负数', trigger: 'blur', transform: (value) => Number(value) }
   ],
   inboundDate: [
     { required: true, message: '请选择入库日期', trigger: 'change' }
@@ -289,30 +287,34 @@ const supplierOptions = ref([])
 // 获取商品选项
 const getProductOptions = async () => {
   try {
-    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST, { 
-      params: { status: 'active', limit: 1000 } 
+    const result = await supabaseProductService.getProducts({ 
+      status: 'active', 
+      limit: 1000 
     })
     
-    if (response.data.success) {
-      productOptions.value = response.data.data.products || []
+    if (result.success) {
+      productOptions.value = result.data || []
     }
   } catch (error) {
     console.error('获取商品选项失败:', error)
+    ElMessage.error('获取商品选项失败')
   }
 }
 
 // 获取供应商选项
 const getSupplierOptions = async () => {
   try {
-    const response = await http.get(API_ENDPOINTS.SUPPLIERS.LIST, { 
-      params: { status: 'active', limit: 1000 } 
+    const result = await supabaseSupplierService.getSuppliers({ 
+      status: 'active', 
+      limit: 1000 
     })
     
-    if (response.data.success) {
-      supplierOptions.value = response.data.data.suppliers || []
+    if (result.success) {
+      supplierOptions.value = result.data || []
     }
   } catch (error) {
     console.error('获取供应商选项失败:', error)
+    ElMessage.error('获取供应商选项失败')
   }
 }
 
@@ -325,33 +327,155 @@ const totalAmount = computed(() => {
 const getInboundRecords = async () => {
   loading.value = true
   try {
-    const params = {
+    const filters = {
       page: pagination.page,
       limit: pagination.limit,
       ...searchForm
     }
     
-    const response = await http.get(API_ENDPOINTS.INBOUND.LIST, { params })
+    const result = await supabaseInboundService.getInboundRecords(filters)
     
-    if (response.data.success) {
-      inboundRecords.value = response.data.data.records || []
-      pagination.total = response.data.data.total || 0
+    if (result.success) {
+      inboundRecords.value = result.data || []
+      pagination.total = result.pagination?.total || 0
+      pagination.pages = result.pagination?.pages || 0
     } else {
-      ElMessage.error(response.data.message || '获取入库记录失败')
+      ElMessage.error(result.message || '获取入库记录失败')
     }
   } catch (error) {
     console.error('获取入库记录失败:', error)
-    ElMessage.error('获取入库记录失败')
+    ElMessage.error('获取入库记录失败: ' + error.message)
   } finally {
     loading.value = false
   }
 }
 
-// 商品选择变化
-const onProductChange = (productId) => {
-  const product = productOptions.value.find(p => p._id === productId)
-  if (product) {
-    inboundForm.purchasePrice = product.purchasePrice
+// 商品选择变化处理
+const onProductChange = async (productId) => {
+  console.log('🔄 商品选择变化:', productId)
+  
+  if (!productId) {
+    // 清空选择时，重置供应商选项和采购单价
+    supplierOptions.value = []
+    inboundForm.supplierId = ''
+    inboundForm.purchasePrice = 0
+    return
+  }
+  
+  try {
+    // 获取选中的商品信息
+    const selectedProduct = productOptions.value.find(p => p.id === productId)
+    console.log('🔍 选中的商品信息:', selectedProduct)
+    
+    // 根据商品ID获取相关供应商
+    const result = await supabaseSupplierService.getSuppliersByProductId(productId)
+    
+    if (result.success) {
+      const relatedSuppliers = result.data || []
+      
+      if (relatedSuppliers.length > 0) {
+        // 更新供应商选项为该商品的相关供应商
+        supplierOptions.value = relatedSuppliers
+        
+        // 如果只有一个供应商，自动选择并设置采购单价
+        if (relatedSuppliers.length === 1) {
+          inboundForm.supplierId = relatedSuppliers[0].id
+          // 自动填充采购单价（使用正确的字段名）
+          if (selectedProduct && selectedProduct.purchasePrice) {
+            inboundForm.purchasePrice = selectedProduct.purchasePrice
+          }
+          console.log('✅ 自动选择唯一供应商:', relatedSuppliers[0].name)
+          // 触发供应商变化处理，获取历史价格
+          await onSupplierChange(relatedSuppliers[0].id)
+        } else {
+          // 清空供应商选择，让用户手动选择
+          inboundForm.supplierId = ''
+          // 但可以预填充采购单价（使用正确的字段名）
+          if (selectedProduct && selectedProduct.purchasePrice) {
+            inboundForm.purchasePrice = selectedProduct.purchasePrice
+          }
+          console.log(`📋 找到 ${relatedSuppliers.length} 个相关供应商，请手动选择`)
+        }
+      } else {
+        // 该商品暂无供应商记录，显示所有活跃供应商供选择
+        console.log('⚠️ 该商品暂无配置的供应商，显示所有供应商')
+        const allSuppliers = await getAllSuppliers()
+        supplierOptions.value = allSuppliers
+        inboundForm.supplierId = ''
+        // 仍然可以预填充采购单价（使用正确的字段名）
+        if (selectedProduct && selectedProduct.purchasePrice) {
+          inboundForm.purchasePrice = selectedProduct.purchasePrice
+        }
+      }
+    } else {
+      console.error('❌ 获取相关供应商失败:', result.message)
+      // 出错时显示所有供应商
+      const allSuppliers = await getAllSuppliers()
+      supplierOptions.value = allSuppliers
+      inboundForm.supplierId = ''
+    }
+    
+  } catch (error) {
+    console.error('❌ 处理商品选择变化失败:', error)
+    // 出错时显示所有供应商
+    const allSuppliers = await getAllSuppliers()
+    supplierOptions.value = allSuppliers
+    inboundForm.supplierId = ''
+  }
+}
+
+// 供应商选择变化处理（新增）
+const onSupplierChange = async (supplierId) => {
+  if (!supplierId || !inboundForm.productId) return
+  
+  try {
+    // 根据历史入库记录获取该商品从该供应商的最近采购价格
+    const result = await supabaseInboundService.getLastPurchasePrice(inboundForm.productId, supplierId)
+    
+    if (result.success && result.data && result.data.unit_price) {
+      // 自动填充最近的采购单价
+      inboundForm.purchasePrice = result.data.unit_price
+      console.log('✅ 自动填充最近采购单价:', result.data.unit_price)
+    } else {
+      // 兜底逻辑：如果没有历史记录，使用商品的默认采购价格（使用正确的字段名）
+      const selectedProduct = productOptions.value.find(p => p.id === inboundForm.productId)
+      if (selectedProduct && selectedProduct.purchasePrice) {
+        inboundForm.purchasePrice = selectedProduct.purchasePrice
+        console.log('✅ 使用商品默认采购价格:', selectedProduct.purchasePrice)
+      } else {
+        console.log('⚠️ 未找到历史采购价格和商品默认价格')
+      }
+    }
+  } catch (error) {
+    console.error('获取历史采购价格失败:', error)
+    // 失败时使用兜底逻辑：商品的默认采购价格（使用正确的字段名）
+    try {
+      const selectedProduct = productOptions.value.find(p => p.id === inboundForm.productId)
+      if (selectedProduct && selectedProduct.purchasePrice) {
+        inboundForm.purchasePrice = selectedProduct.purchasePrice
+        console.log('✅ 兜底使用商品默认采购价格:', selectedProduct.purchasePrice)
+      }
+    } catch (fallbackError) {
+      console.error('兜底逻辑也失败:', fallbackError)
+    }
+  }
+}
+
+// 获取所有供应商（用于筛选）
+const getAllSuppliers = async () => {
+  try {
+    const result = await supabaseSupplierService.getSuppliers({ 
+      status: 'active', 
+      limit: 1000 
+    })
+    
+    if (result.success) {
+      return result.data || []
+    }
+    return []
+  } catch (error) {
+    console.error('获取所有供应商失败:', error)
+    return []
   }
 }
 
@@ -393,28 +517,27 @@ const saveInbound = async () => {
     await inboundFormRef.value.validate()
     
     const inboundData = {
-      product: inboundForm.productId,
-      supplier: inboundForm.supplierId,
+      productId: inboundForm.productId,
+      supplierId: inboundForm.supplierId,
       quantity: inboundForm.quantity,
-      unitPrice: inboundForm.purchasePrice, // 字段映射
+      purchasePrice: inboundForm.purchasePrice,
       inboundDate: inboundForm.inboundDate,
-      remark: inboundForm.notes, // 字段映射
-      createdBy: 'system' // 添加必填字段
+      notes: inboundForm.notes
     }
     
-    const response = await http.post(API_ENDPOINTS.INBOUND.CREATE, inboundData)
+    const result = await supabaseInboundService.createInboundRecord(inboundData)
     
-    if (response.data.success) {
-      ElMessage.success(response.data.message || '入库成功')
+    if (result.success) {
+      ElMessage.success(result.message || '入库成功')
       showAddDialog.value = false
       resetForm()
       getInboundRecords()
     } else {
-      ElMessage.error(response.data.message || '入库失败')
+      ElMessage.error(result.message || '入库失败')
     }
   } catch (error) {
     console.error('入库失败:', error)
-    ElMessage.error('入库失败')
+    ElMessage.error('入库失败: ' + error.message)
   }
 }
 
@@ -434,6 +557,10 @@ const resetForm = () => {
     inboundDate: new Date().toISOString().split('T')[0],
     notes: ''
   })
+  
+  // 重置供应商选项为所有供应商
+  getSupplierOptions()
+  
   if (inboundFormRef.value) {
     inboundFormRef.value.clearValidate()
   }

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图标测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        .test-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            color: #0c4a6e;
+        }
+        .error {
+            background-color: #fef2f2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        .info {
+            background-color: #f8fafc;
+            border: 1px solid #64748b;
+            color: #334155;
+        }
+        button {
+            background: #409EFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #337ecc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>库存管理系统 - 图标测试</h1>
+        
+        <div class="test-section">
+            <div class="test-title">1. 应用状态检查</div>
+            <div id="app-status" class="status info">检查中...</div>
+            <button onclick="checkAppStatus()">重新检查应用状态</button>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">2. 主应用访问测试</div>
+            <div id="main-app-status" class="status info">准备测试...</div>
+            <button onclick="testMainApp()">测试主应用</button>
+            <button onclick="window.open('/', '_blank')">在新窗口打开主应用</button>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">3. 仪表板直接访问</div>
+            <div id="dashboard-status" class="status info">准备测试...</div>
+            <button onclick="testDashboard()">测试仪表板</button>
+            <button onclick="window.open('/#/dashboard', '_blank')">在新窗口打开仪表板</button>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">4. API连接测试</div>
+            <div id="api-status" class="status info">准备测试...</div>
+            <button onclick="testAPI()">测试API连接</button>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">5. 控制台错误检查</div>
+            <div id="console-errors" class="status info">检查中...</div>
+            <button onclick="checkConsoleErrors()">检查控制台错误</button>
+        </div>
+    </div>
+
+    <script>
+        // 检查应用状态
+        function checkAppStatus() {
+            const statusDiv = document.getElementById('app-status');
+            statusDiv.innerHTML = '检查中...';
+            statusDiv.className = 'status info';
+            
+            // 检查当前页面是否在Vite开发服务器上
+            if (window.location.port === '5175') {
+                statusDiv.innerHTML = '✅ 应用运行在正确的端口 (5175)';
+                statusDiv.className = 'status success';
+            } else {
+                statusDiv.innerHTML = '⚠️ 应用可能不在预期端口运行';
+                statusDiv.className = 'status error';
+            }
+        }
+
+        // 测试主应用
+        function testMainApp() {
+            const statusDiv = document.getElementById('main-app-status');
+            statusDiv.innerHTML = '测试中...';
+            statusDiv.className = 'status info';
+            
+            fetch('/')
+                .then(response => {
+                    if (response.ok) {
+                        statusDiv.innerHTML = '✅ 主应用响应正常';
+                        statusDiv.className = 'status success';
+                    } else {
+                        statusDiv.innerHTML = '❌ 主应用响应异常: ' + response.status;
+                        statusDiv.className = 'status error';
+                    }
+                })
+                .catch(error => {
+                    statusDiv.innerHTML = '❌ 主应用访问失败: ' + error.message;
+                    statusDiv.className = 'status error';
+                });
+        }
+
+        // 测试仪表板
+        function testDashboard() {
+            const statusDiv = document.getElementById('dashboard-status');
+            statusDiv.innerHTML = '测试中...';
+            statusDiv.className = 'status info';
+            
+            fetch('/#/dashboard')
+                .then(response => {
+                    if (response.ok) {
+                        statusDiv.innerHTML = '✅ 仪表板路由响应正常';
+                        statusDiv.className = 'status success';
+                    } else {
+                        statusDiv.innerHTML = '❌ 仪表板路由响应异常: ' + response.status;
+                        statusDiv.className = 'status error';
+                    }
+                })
+                .catch(error => {
+                    statusDiv.innerHTML = '❌ 仪表板访问失败: ' + error.message;
+                    statusDiv.className = 'status error';
+                });
+        }
+
+        // 测试API连接
+        function testAPI() {
+            const statusDiv = document.getElementById('api-status');
+            statusDiv.innerHTML = '测试中...';
+            statusDiv.className = 'status info';
+            
+            const apiUrl = 'https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com/api/reports/summary';
+            
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        statusDiv.innerHTML = '✅ API连接正常，数据: ' + JSON.stringify(data.data);
+                        statusDiv.className = 'status success';
+                    } else {
+                        statusDiv.innerHTML = '❌ API返回错误: ' + data.error;
+                        statusDiv.className = 'status error';
+                    }
+                })
+                .catch(error => {
+                    statusDiv.innerHTML = '❌ API连接失败: ' + error.message;
+                    statusDiv.className = 'status error';
+                });
+        }
+
+        // 检查控制台错误
+        function checkConsoleErrors() {
+            const statusDiv = document.getElementById('console-errors');
+            
+            // 简单的错误检查
+            const errors = [];
+            
+            // 重写console.error来捕获错误
+            const originalError = console.error;
+            console.error = function(...args) {
+                errors.push(args.join(' '));
+                originalError.apply(console, args);
+            };
+            
+            setTimeout(() => {
+                if (errors.length === 0) {
+                    statusDiv.innerHTML = '✅ 暂无控制台错误';
+                    statusDiv.className = 'status success';
+                } else {
+                    statusDiv.innerHTML = '❌ 发现控制台错误: ' + errors.join('; ');
+                    statusDiv.className = 'status error';
+                }
+            }, 1000);
+        }
+
+        // 页面加载时自动检查
+        window.onload = function() {
+            checkAppStatus();
+            checkConsoleErrors();
+        };
+    </script>
+</body>
+</html>
