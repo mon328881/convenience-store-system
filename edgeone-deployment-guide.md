@@ -67,16 +67,28 @@ Node.js版本: 18.x
 
 ⚠️ **必须在EdgeOne控制台中配置环境变量，否则会出现401错误**
 
+### 当前架构说明
+本系统采用**前端直连Supabase**架构，不需要后端API服务。所有数据操作都通过前端直接连接Supabase数据库。
+
+### 必需的环境变量
+
 在项目设置中添加以下环境变量：
 
 | 变量名 | 值 | 说明 |
-|--------|----|----|
+|--------|----|----|  
 | `VITE_DEPLOYMENT_TYPE` | `edgeone` | 部署类型 |
-| `VITE_EDGEONE_API_URL` | `https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com` | API地址 |
-| `VITE_SUPABASE_URL` | `https://nxogjfzasogjzbkpfwle.supabase.co` | Supabase数据库URL |
-| `VITE_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54b2dqZnphc29nanpia3Bmd2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU3MjU2NzcsImV4cCI6MjA1MTMwMTY3N30.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8` | Supabase匿名密钥 |
+| `VITE_SUPABASE_URL` | `https://nxogjfzasogjzbkpfwle.supabase.co` | Supabase数据库URL（核心必需） |
+| `VITE_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54b2dqZnphc29nanpia3Bmd2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU3MjU2NzcsImV4cCI6MjA1MTMwMTY3N30.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8` | Supabase匿名密钥（核心必需） |
 | `VITE_APP_NAME` | `库存管理系统` | 应用名称 |
+| `VITE_APP_VERSION` | `1.0.0` | 应用版本 |
 | `VITE_ENABLE_MOCK` | `false` | 禁用模拟数据 |
+| `VITE_ENABLE_DEBUG` | `false` | 禁用调试模式 |
+
+### 可选的环境变量（当前未使用）
+以下变量为备用API配置，当前架构下不需要：
+- `VITE_EDGEONE_API_URL`：`https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com`
+- `VITE_TENCENT_API_URL`：`https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com`
+- `VITE_RENDER_API_URL`：`https://convenience-store-api-latest.onrender.com`
 
 #### 如何配置环境变量：
 1. 在EdgeOne控制台进入您的Pages项目
