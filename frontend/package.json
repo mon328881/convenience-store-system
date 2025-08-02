@@ -4,12 +4,12 @@
   "description": "便利店进销存系统前端",
   "private": true,
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "vercel-build": "vite build",
+    "build": "cp .env.vercel .env && vite build",
+    "vercel-build": "cp .env.vercel .env && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },

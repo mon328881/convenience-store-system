@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
-console.log('🔧 更新Supabase表结构以支持MongoDB数据迁移');
+console.log('🔧 更新Supabase表结构以支持数据迁移');
 console.log('=====================================\n');
 
 // Supabase配置
@@ -72,7 +72,7 @@ async function updateSupabaseSchema() {
         }
         
         console.log('\n🎉 表结构更新完成！现在可以运行数据迁移了。');
-        console.log('💡 请运行: node migrate-mongodb-to-supabase.js');
+        console.log('💡 请运行数据迁移脚本完成数据导入');
         
     } catch (error) {
         console.error('❌ 更新表结构失败:', error.message);

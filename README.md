@@ -1,151 +1,222 @@
 # 便利店进销存系统 - Render 部署版本
 
-## 🎯 项目概述
-这是一个基于 Vue.js + Express.js + MongoDB 的便利店进销存管理系统，现已配置为可在 Render 平台免费部署。
+## 便利店进销存管理系统
+
+这是一个基于 Vue.js + Supabase PostgreSQL 的便利店进销存管理系统，现已配置为可在 Vercel 平台免费部署。
 
 ## 🚀 快速部署
 
-### 方式一：超级一键部署（推荐）
+### 前置条件
+- [ ] GitHub 账号
+- [ ] Vercel 账号
+- [ ] Supabase 账号
+
+### 部署步骤
+
+1. **Fork 本仓库**
+   ```bash
+   # 点击 GitHub 页面右上角的 Fork 按钮
+   ```
+
+2. **配置 Supabase**
+   - 在 Supabase 创建新项目
+   - 获取项目 URL 和 anon key
+   - 运行数据库迁移脚本创建表结构
+
+3. **部署到 Vercel**
+   - 连接 GitHub 仓库到 Vercel
+   - 配置环境变量：
+     ```
+     VITE_SUPABASE_URL=your_supabase_url
+     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+     ```
+
+4. **访问应用**
+   - 部署完成后，通过 Vercel 提供的 URL 访问应用
+
+## 💻 本地开发
+
 ```bash
-# 1. 克隆项目
-git clone <你的仓库地址>
-cd ke
+# 克隆项目
+git clone <your-repo-url>
+cd convenience-store-system
 
-# 2. 运行超级一键部署脚本
-./one-click-deploy.sh
+# 安装依赖
+cd frontend
+npm install
 
-# 3. 按照脚本指导在 Render 控制台完成部署
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，填入 Supabase 配置
 
-# 4. 验证部署结果
-./verify-deployment.sh
+# 启动开发服务器
+npm run dev
 ```
 
-### 方式二：简单一键部署
+## 🛠 技术栈
+
+- **前端**: Vue 3 + Element Plus + Vite
+- **数据库**: Supabase PostgreSQL
+- **部署**: Vercel
+- **状态管理**: Pinia
+- **路由**: Vue Router
+
+## 📋 功能特性
+
+- ✅ 商品管理（增删改查）
+- ✅ 供应商管理
+- ✅ 入库管理
+- ✅ 出库管理
+- ✅ 库存统计
+- ✅ 数据可视化
+- ✅ 响应式设计
+
+## 🔧 配置说明
+
+### 环境变量
 ```bash
-# 运行简单部署脚本
-./deploy-render.sh
+# Supabase 配置
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### 方式三：手动部署
-详细步骤请参考 [Render部署指南.md](./Render部署指南.md)
+## 📚 文档
+
+- [便利店进销存系统使用指南.md](./便利店进销存系统使用指南.md) - 系统使用说明
+- [便利店进销存系统PRD.md](./便利店进销存系统PRD.md) - 产品需求文档
+
+## 🐛 故障排除
+
+1. **部署失败**: 检查环境变量配置是否正确
+2. **数据库连接失败**: 验证 Supabase 配置和网络连接
+3. **页面加载异常**: 检查浏览器控制台错误信息
 
 ## 🛠️ 部署工具包
 
-| 工具 | 功能 | 适用场景 |
-|------|------|----------|
-| `one-click-deploy.sh` | 超级一键部署 | 新手用户，完整自动化 |
-| `deploy-render.sh` | 简单部署 | 有经验用户，快速部署 |
-| `verify-deployment.sh` | 部署验证 | 验证部署结果，故障排除 |
+### 核心脚本
+- `frontend/` - Vue.js 前端应用
+- `supabase/` - 数据库迁移脚本
 
-详细说明请参考 [部署工具包说明.md](./部署工具包说明.md)
+### 配置文件
+- `.env.example` - 环境变量模板
+- `vercel.json` - Vercel 部署配置
+
+## 📊 系统架构
+
+```
+便利店进销存系统
+├── 前端 (Vue 3 + Element Plus)
+│   ├── 商品管理
+│   ├── 供应商管理
+│   ├── 入库管理
+│   ├── 出库管理
+│   └── 数据统计
+└── 数据库 (Supabase PostgreSQL)
+    ├── suppliers 表
+    ├── products 表
+    ├── supplier_products 表
+    ├── inbound_records 表
+    └── outbound_records 表
+```
+
+## 🎯 项目特色
+
+- **零配置部署**: 一键部署到 Vercel
+- **现代技术栈**: Vue 3 + Supabase
+- **响应式设计**: 支持各种设备
+- **实时数据**: Supabase 实时订阅
+- **类型安全**: TypeScript 支持
 
 ## 📋 部署清单
 
 ### ✅ 已完成的配置
-- [x] Render Blueprint 配置文件 (`render.yaml`)
-- [x] 前端 API 地址动态配置
-- [x] 后端 CORS 跨域配置
+- [x] Vercel 部署配置文件 (`vercel.json`)
+- [x] 前端 Supabase 配置
 - [x] 环境变量配置模板
 - [x] 部署脚本和文档
 
 ### 🔧 需要手动配置的项目
-- [ ] MongoDB Atlas 数据库连接
-- [ ] Render 环境变量设置
+- [ ] Supabase 项目创建
+- [ ] Vercel 环境变量设置
 - [ ] 域名和 SSL 证书（自动）
 
 ## 📁 项目结构
 ```
 ke/
-├── api/                    # 后端 API 服务
-│   ├── index.js           # 主入口文件
-│   ├── package.json       # 后端依赖
-│   └── src/               # 源代码
 ├── frontend/              # 前端 Vue.js 应用
 │   ├── src/               # 源代码
 │   ├── package.json       # 前端依赖
 │   └── dist/              # 构建输出
-├── render.yaml            # Render 部署配置
-├── deploy-render.sh       # 部署脚本
-├── Render部署指南.md       # 详细部署说明
-└── Render环境变量配置清单.md # 环境变量配置
+├── backend/               # 后端配置和工具
+│   └── src/config/        # Supabase 配置
+├── supabase/              # 数据库迁移脚本
+├── vercel.json            # Vercel 部署配置
+└── .env.example           # 环境变量模板
 ```
 
 ## 🌐 部署后的访问地址
-- **前端**: https://ke-inventory.onrender.com
-- **API**: https://ke-inventory-api.onrender.com
-- **健康检查**: https://ke-inventory-api.onrender.com/health
+- **应用**: https://your-app.vercel.app
+- **数据库**: Supabase Dashboard
 
 ## 🔑 环境变量配置
 
-### 后端必需变量
-```env
-NODE_ENV=production
-MONGODB_URI=mongodb+srv://用户名:密码@cluster.mongodb.net/数据库名
-JWT_SECRET=32位随机字符串
-FRONTEND_URL=https://ke-inventory.onrender.com
-```
-
 ### 前端必需变量
 ```env
-VITE_API_URL=https://ke-inventory-api.onrender.com
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
-
-详细配置请参考 [Render环境变量配置清单.md](./Render环境变量配置清单.md)
 
 ## 💰 成本说明
 
-### Render 免费层级
-- **Web Service**: 750小时/月，15分钟无活动后休眠
-- **Static Site**: 无限制，全球 CDN
-- **PostgreSQL**: 1GB 存储（可选）
+### Vercel 免费层级
+- **静态网站**: 无限制，全球 CDN
+- **函数调用**: 100GB-小时/月
+- **带宽**: 100GB/月
 
-### 外部服务
-- **MongoDB Atlas**: 512MB 免费层级
-- **总成本**: 完全免费（适合开发和小型项目）
+### Supabase 免费层级
+- **数据库**: 500MB 存储
+- **API 请求**: 50,000 次/月
+- **实时连接**: 200 个并发
+
+### 总成本
+完全免费（适合开发和小型项目）
 
 ## ⚠️ 重要提醒
 
-1. **冷启动延迟**: 免费层级有15分钟无活动休眠，首次访问需要50秒启动时间
-2. **数据库配置**: 确保 MongoDB Atlas 允许来自任何 IP 的连接
-3. **环境变量**: 部署后必须配置所有必需的环境变量
-4. **域名更新**: 部署完成后需要更新前后端的域名配置
+1. **环境变量**: 部署后必须配置所有必需的环境变量
+2. **数据库迁移**: 首次部署需要运行数据库迁移脚本
+3. **域名配置**: Vercel 自动提供 HTTPS 域名
 
 ## 🔧 本地开发
 
 ```bash
 # 安装依赖
 cd frontend && npm install
-cd ../api && npm install
 
 # 启动开发服务器
 npm run dev  # 前端 (http://localhost:5173)
-cd api && npm run dev  # 后端 (http://localhost:3000)
 ```
 
 ## 📚 相关文档
-- [Render部署指南.md](./Render部署指南.md) - 详细部署步骤
-- [Render环境变量配置清单.md](./Render环境变量配置清单.md) - 环境变量配置
-- [MongoDB Atlas配置指南.md](./MongoDB Atlas配置指南.md) - 数据库配置
-- [便利店进销存系统开发指南.md](./便利店进销存系统开发指南.md) - 开发说明
+- [便利店进销存系统使用指南.md](./便利店进销存系统使用指南.md) - 系统使用说明
+- [便利店进销存系统PRD.md](./便利店进销存系统PRD.md) - 产品需求文档
 
 ## 🆘 故障排除
 
 ### 常见问题
-1. **部署失败**: 检查 `package.json` 中的构建命令
-2. **API 无法访问**: 检查环境变量配置
-3. **数据库连接失败**: 检查 MongoDB 连接字符串和网络配置
-4. **CORS 错误**: 检查前后端域名配置
+1. **部署失败**: 检查环境变量配置是否正确
+2. **数据库连接失败**: 验证 Supabase 配置和网络连接
+3. **页面加载异常**: 检查浏览器控制台错误信息
 
 ### 获取帮助
-- 查看 Render Dashboard 中的部署日志
-- 检查服务的 "Logs" 标签页
-- 参考官方文档: https://render.com/docs
+- 查看 Vercel Dashboard 中的部署日志
+- 检查 Supabase Dashboard 中的日志
+- 参考官方文档: https://vercel.com/docs 和 https://supabase.com/docs
 
 ## 🎉 部署成功后
-1. 访问前端地址测试界面
-2. 测试用户注册和登录功能
-3. 验证各个功能模块
-4. 配置自定义域名（可选）
+1. 访问应用地址测试界面
+2. 验证各个功能模块
+3. 配置自定义域名（可选）
 
 ---
 

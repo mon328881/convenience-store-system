@@ -3,7 +3,7 @@ const isDevelopment = import.meta?.env?.DEV ?? true  // 默认为开发环境
 const isProduction = import.meta?.env?.PROD ?? false
 
 // 部署方案配置
-const DEPLOYMENT_TYPE = import.meta.env.VITE_DEPLOYMENT_TYPE || 'edgeone' // 'edgeone', 'render', 'local'
+const DEPLOYMENT_TYPE = import.meta.env.VITE_DEPLOYMENT_TYPE || 'vercel' // 'vercel', 'local'
 
 // 根据环境和部署方案设置 API 基础地址
 export const API_BASE_URL = (() => {
@@ -16,26 +16,18 @@ export const API_BASE_URL = (() => {
   // 生产环境：根据部署方案选择API地址
   if (isProduction) {
     switch (DEPLOYMENT_TYPE) {
-      case 'edgeone':
-        // EdgeOne边缘函数部署
-        return (import.meta.env.VITE_EDGEONE_API_URL || 'https://your-domain.edgeone.app') + '/api'
-      
-      case 'render':
-        // Render平台部署
-        return (import.meta.env.VITE_API_URL || window.location.origin) + '/api'
-      
-      case 'tencent':
-        // 腾讯云轻量应用服务器部署
-        return (import.meta.env.VITE_TENCENT_API_URL || 'https://your-server-ip') + '/api'
+      case 'vercel':
+        // Vercel部署
+        return (import.meta.env.VITE_VERCEL_API_URL || 'https://your-vercel-app.vercel.app') + '/api'
       
       default:
-        // 默认回退
-        return (import.meta.env.VITE_API_URL || window.location.origin) + '/api'
+        // 默认使用本地开发环境
+        return 'http://localhost:3000/api'
     }
   }
   
-  // 默认回退：使用腾讯云函数地址
-  return (import.meta.env.VITE_EDGEONE_API_URL || 'https://1371559131-0yd2evf4vy.ap-beijing.tencentscf.com') + '/api'
+  // 默认回退：本地开发环境
+  return 'http://localhost:3000/api'
 })()
 
 // API 端点配置
