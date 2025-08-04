@@ -265,7 +265,7 @@
 ├── 数据验证 (Joi)
 └── 日志管理 (Winston)
 
-数据层 (Supabase PostgreSQL)
+数据层 (MongoDB)
 ├── 用户数据
 ├── 商品数据
 ├── 库存数据
@@ -281,28 +281,25 @@
 - **构建工具**: Vite
 - **样式预处理**: SCSS
 
-#### 6.2.2 数据库技术栈
-- **数据库**: Supabase PostgreSQL
-- **数据访问**: 直接前端连接
-- **实时功能**: Supabase实时订阅
-- **身份认证**: Supabase Auth
-- **数据备份**: Supabase自动备份
+#### 6.2.2 后端技术栈
+- **运行环境**: Node.js 18+
+- **Web框架**: Express.js
+- **数据库驱动**: Mongoose
+- **身份认证**: JWT + bcrypt
+- **API文档**: Swagger
 
 #### 6.2.3 数据库设计
-- **数据库**: Supabase PostgreSQL
-- **表结构**: 
-  - suppliers (供应商)
-  - products (商品)
-  - supplier_products (供应商商品关联)
-  - inbound_records (入库记录)
-  - outbound_records (出库记录)
-- **索引优化**: 基于查询频率设计复合索引
+- **数据库**: MongoDB 6.0+
+- **连接池**: Mongoose连接池
+- **数据备份**: 定时备份策略
+- **索引优化**: 查询性能优化
 
 ### 6.3 部署方案
-- **前端部署**: Vercel
-- **数据库**: Supabase托管
-- **SSL证书**: 自动配置
-- **监控**: Vercel Analytics + Supabase监控
+- **云服务**: 阿里云/腾讯云
+- **容器化**: Docker + Docker Compose
+- **反向代理**: Nginx
+- **SSL证书**: Let's Encrypt
+- **监控**: PM2 + 日志监控
 
 ## 7. 项目实施计划
 

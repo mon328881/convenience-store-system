@@ -1,22 +1,18 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { resolve } from 'path'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
-
+import { resolve } from 'path'
 export default defineConfig({
   plugins: [
     vue(),
     AutoImport({
-      imports: ['vue', 'vue-router', 'pinia'],
-      resolvers: [ElementPlusResolver()],
-      dts: true
+      resolvers: [ElementPlusResolver({ importStyle: 'css' })],
     }),
     Components({
-      resolvers: [ElementPlusResolver()],
-      dts: true
-    })
+      resolvers: [ElementPlusResolver({ importStyle: 'css' })],
+    }),
   ],
   resolve: {
     alias: {
@@ -27,24 +23,28 @@ export default defineConfig({
     port: 5175,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path
       }
+    },
+    headers: {
+      'Content-Security-Policy': "script-src 'self' 'unsafe-eval'"
     }
   },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
+    minify: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'element-plus': ['element-plus'],
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'charts': ['echarts', 'vue-echarts']
-        }
+        // manualChunks: {
+        //   'element-plus': ['element-plus'],
+        //   'vue-vendor': ['vue', 'vue-router', 'pinia'],
+        //   'charts': ['echarts', 'vue-echarts']
+        // }
       }
     }
   }

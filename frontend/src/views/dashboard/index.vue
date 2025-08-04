@@ -352,6 +352,69 @@ const loadStats = async () => {
 onMounted(() => {
   loadStats()
 })
+const loadDashboardData = async () => {
+  // try {
+  //   // 并行获取所有数据
+  //   const [
+  //     productsData,
+  //     suppliersData,
+  //     inboundData,
+  //     outboundData
+  //   ] = await Promise.all([
+  //     SupabaseProductService.getProducts({ limit: 1000 }),
+  //     supabaseSupplierService.getSuppliers({ limit: 1000 }),
+  //     supabaseInboundService.getInbounds({ limit: 5, page: 1 }),
+  //     supabaseOutboundService.getOutbounds({ limit: 5, page: 1 })
+  //   ])
+
+  //   // 更新商品统计
+  //   if (productsData.success) {
+  //     const products = productsData.data
+  //     stats.value.totalProducts = products.length
+  //     stats.value.lowStockProducts = products.filter(p => p.currentStock > 0 && p.currentStock < p.stockAlert).length
+  //     stats.value.outOfStockProducts = products.filter(p => p.currentStock === 0).length
+
+  //     // 计算分类和品牌统计
+  //     const categories = {}
+  //     const brands = {}
+  //     products.forEach(p => {
+  //       categories[p.category] = (categories[p.category] || 0) + 1
+  //       brands[p.brand] = (brands[p.brand] || 0) + 1
+  //     })
+  //     categoryStats.value = Object.entries(categories).map(([name, value]) => ({ name, value }))
+  //     brandStats.value = Object.entries(brands).map(([name, value]) => ({ name, value }))
+  //   }
+
+  //   // 更新供应商统计
+  //   if (suppliersData.success) {
+  //     stats.value.totalSuppliers = suppliersData.data.length
+  //   }
+
+  //   // 更新最近入库
+  //   if (inboundData.success) {
+  //     recentInbound.value = inboundData.data.map(item => ({
+  //       productName: item.product_name,
+  //       quantity: item.quantity,
+  //       createdAt: new Date(item.created_at).toLocaleDateString()
+  //     }))
+  //   }
+
+  //   // 更新最近出库
+  //   if (outboundData.success) {
+  //     recentOutbound.value = outboundData.data.map(item => ({
+  //       productName: item.product_name,
+  //       quantity: item.quantity,
+  //       createdAt: new Date(item.created_at).toLocaleDateString()
+  //     }))
+  //   }
+  // } catch (error) {
+  //   console.error('加载仪表盘数据失败:', error)
+  // }
+}
+
+onMounted(() => {
+  loadDashboardData()
+})
 </script>
 
 <style scoped>

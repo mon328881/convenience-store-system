@@ -7,28 +7,31 @@ const DEPLOYMENT_TYPE = import.meta.env.VITE_DEPLOYMENT_TYPE || 'vercel' // 'ver
 
 // 根据环境和部署方案设置 API 基础地址
 export const API_BASE_URL = (() => {
-  // 开发环境：使用Vite代理
+  // 生产环境且配置为直连Supabase
+  if (isProduction && DEPLOYMENT_TYPE === 'vercel' && import.meta.env.VITE_API_BASE_URL === 'direct-supabase') {
+    // 在直连模式下，我们不应该有API基础地址，因为我们会直接使用Supabase客户端。
+    // 返回一个特殊值或空字符串来表示这一点。
+    return 'direct-supabase';
+  }
+
+  // 开发环境，使用Vite代理
   if (isDevelopment) {
-    // 使用Vite代理访问本地后端服务
-    return '/api'
+    return '/api';
   }
-  
-  // 生产环境：根据部署方案选择API地址
+
+  // 其他生产环境（如果未来有部署后端API的情况）
   if (isProduction) {
-    switch (DEPLOYMENT_TYPE) {
-      case 'vercel':
-        // Vercel部署
-        return (import.meta.env.VITE_VERCEL_API_URL || 'https://your-vercel-app.vercel.app') + '/api'
-      
-      default:
-        // 默认使用本地开发环境
-        return 'http://localhost:3000/api'
+    // Vercel部署，但有后端API
+    if (DEPLOYMENT_TYPE === 'vercel' && import.meta.env.VITE_VERCEL_API_URL) {
+      return import.meta.env.VITE_VERCEL_API_URL + '/api';
     }
+    // 默认回退到本地API地址（这在生产中通常不应该发生）
+    return 'http://localhost:3000/api';
   }
-  
-  // 默认回退：本地开发环境
-  return 'http://localhost:3000/api'
-})()
+
+  // 最终回退
+  return '/api';
+})();
 
 // API 端点配置
 export const API_ENDPOINTS = {

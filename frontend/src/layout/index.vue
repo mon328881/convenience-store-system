@@ -17,7 +17,7 @@
         <template v-for="route in menuRoutes" :key="route.path">
           <el-sub-menu v-if="route.children && route.children.length > 1" :index="route.path">
             <template #title>
-              <el-icon><component :is="route.meta?.icon" /></el-icon>
+              <el-icon><component :is="icons[route.meta?.icon]" /></el-icon>
               <span>{{ route.meta?.title }}</span>
             </template>
             <el-menu-item
@@ -25,13 +25,13 @@
               :key="child.path"
               :index="route.path === '/' ? child.path : `${route.path}/${child.path}`"
             >
-              <el-icon><component :is="child.meta?.icon" /></el-icon>
+              <el-icon><component :is="icons[child.meta?.icon]" /></el-icon>
               <span>{{ child.meta?.title }}</span>
             </el-menu-item>
           </el-sub-menu>
           
           <el-menu-item v-else :index="route.path">
-            <el-icon><component :is="route.meta?.icon || route.children?.[0]?.meta?.icon" /></el-icon>
+            <el-icon><component :is="icons[route.meta?.icon || route.children?.[0]?.meta?.icon]" /></el-icon>
             <span>{{ route.meta?.title || route.children?.[0]?.meta?.title }}</span>
           </el-menu-item>
         </template>
@@ -95,10 +95,14 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { House, User, Goods, Box, DataAnalysis, Download, Upload, Shop, Expand, Fold, Refresh } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
+
+// 注册图标组件
+const icons = { House, User, Goods, Box, DataAnalysis, Download, Upload, Shop, Expand, Fold, Refresh }
 
 // 侧边栏折叠状态
 const isCollapse = ref(false)
