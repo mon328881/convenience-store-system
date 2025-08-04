@@ -11,7 +11,31 @@ const routes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
-        meta: { title: '仪表板', icon: 'House' }
+        meta: { title: '首页', icon: 'House' }
+      }
+    ]
+  },
+  {
+    path: '/inbound',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'Inbound',
+        component: () => import('@/views/inventory/inbound.vue'),
+        meta: { title: '入库管理', icon: 'Download' }
+      }
+    ]
+  },
+  {
+    path: '/outbound',
+    component: Layout,
+    children: [
+      {
+        path: '',
+        name: 'Outbound',
+        component: () => import('@/views/inventory/outbound.vue'),
+        meta: { title: '出库管理', icon: 'Upload' }
       }
     ]
   },
@@ -36,26 +60,6 @@ const routes = [
         name: 'Products',
         component: () => import('@/views/products/index.vue'),
         meta: { title: '商品管理', icon: 'Goods' }
-      }
-    ]
-  },
-  {
-    path: '/inventory',
-    component: Layout,
-    redirect: '/inventory/inbound',
-    meta: { title: '库存管理', icon: 'Box' },
-    children: [
-      {
-        path: 'inbound',
-        name: 'Inbound',
-        component: () => import('@/views/inventory/inbound.vue'),
-        meta: { title: '入库管理', icon: 'Download' }
-      },
-      {
-        path: 'outbound',
-        name: 'Outbound',
-        component: () => import('@/views/inventory/outbound.vue'),
-        meta: { title: '出库管理', icon: 'Upload' }
       }
     ]
   },

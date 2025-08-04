@@ -15,22 +15,7 @@
         class="sidebar-menu"
       >
         <template v-for="route in menuRoutes" :key="route.path">
-          <el-sub-menu v-if="route.children && route.children.length > 1" :index="route.path">
-            <template #title>
-              <el-icon><component :is="icons[route.meta?.icon]" /></el-icon>
-              <span>{{ route.meta?.title }}</span>
-            </template>
-            <el-menu-item
-              v-for="child in route.children"
-              :key="child.path"
-              :index="route.path === '/' ? child.path : `${route.path}/${child.path}`"
-            >
-              <el-icon><component :is="icons[child.meta?.icon]" /></el-icon>
-              <span>{{ child.meta?.title }}</span>
-            </el-menu-item>
-          </el-sub-menu>
-          
-          <el-menu-item v-else :index="route.path">
+          <el-menu-item :index="route.path">
             <el-icon><component :is="icons[route.meta?.icon || route.children?.[0]?.meta?.icon]" /></el-icon>
             <span>{{ route.meta?.title || route.children?.[0]?.meta?.title }}</span>
           </el-menu-item>
@@ -118,12 +103,9 @@ const activeMenu = computed(() => route.path)
 // 菜单路由（过滤掉不需要显示的路由）
 const menuRoutes = computed(() => {
   return router.getRoutes().filter(route => 
-    route.meta?.title && route.path !== '/404' && route.path !== '/'
-  ).concat(
-    // 手动添加根路由的子路由
-    router.getRoutes().find(route => route.path === '/')?.children?.filter(child => child.meta?.title) || []
-  )
-})
+    route.meta?.title && route.meta?.icon && route.path !== '/404'
+  );
+});
 
 // 面包屑导航
 const breadcrumbs = computed(() => {
