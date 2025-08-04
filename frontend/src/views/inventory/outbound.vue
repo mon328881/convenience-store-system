@@ -303,18 +303,20 @@ const productOptions = ref([])
 // 获取商品选项
 const getProductOptions = async () => {
   try {
-    const response = await http.get(API_ENDPOINTS.PRODUCTS.LIST, { 
-      params: { status: 'active', limit: 1000 } 
-    })
+    const result = await supabaseProductService.getProducts({ 
+      status: 'active', 
+      limit: 1000 
+    });
     
-    if (response.data.success) {
-      // 商品数据直接在 data 中
-      productOptions.value = response.data.data || []
+    if (result.success) {
+      productOptions.value = result.data || [];
+    } else {
+      console.error('获取商品选项失败:', result.message);
     }
   } catch (error) {
-    console.error('获取商品选项失败:', error)
+    console.error('获取商品选项失败:', error);
   }
-}
+};
 
 // 选中的商品
 const selectedProduct = computed(() => {
