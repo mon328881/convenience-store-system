@@ -26,7 +26,9 @@
     "vite": "^7.0.4",
     "vue": "^3.5.17",
     "vue-echarts": "^6.6.1",
-    "vue-router": "^4.5.1"
+    "vue-router": "^4.5.1",
+    "unplugin-auto-import": "^19.3.0",
+    "unplugin-vue-components": "^28.8.0"
   },
   "devDependencies": {
     "@vue/eslint-config-prettier": "^8.0.0",
@@ -34,8 +36,6 @@
     "eslint-plugin-vue": "^10.4.0",
     "globals": "^16.3.0",
     "prettier": "^3.0.0",
-    "unplugin-auto-import": "^19.3.0",
-    "unplugin-vue-components": "^28.8.0",
     "vue-eslint-parser": "^10.2.0"
   }
 }
